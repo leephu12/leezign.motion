@@ -1,0 +1,65 @@
+name: Đồng bộ Notion → GitHub Pages
+
+on:
+  # Tự chạy định kỳ: mỗi 30 phút (giờ UTC). Muốn thưa hơn, đổi thành '0 */3 * * *' (3 tiếng/lần)
+  schedule:
+    - cron: '*/30 * * * *'
+  # Nút "Run workflow" trong tab Actions để cập nhật ngay
+  workflow_dispatch:
+  # Gọi từ bên ngoài (Notion webhook, Zapier, Make, phím tắt điện thoại…)
+  repository_dispatch:
+    types: [notion-update]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Giữ lại media đã tải ở lần trước → chỉ tải file mới/đã đổi
+      - uses: actions/cache@v4
+        with:
+          path: .cache/media
+          key: notion-media-${{ github.run_id }}
+          restore-keys: notion-media-
+
+      - name: Build từ Notion
+        run: node scripts/build.mjs
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_PAGE_ID: ${{ vars.NOTION_PAGE_ID }}
+          SITE_URL: ${{ vars.SITE_URL }}
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
