@@ -111,6 +111,41 @@ const eqText = (expr) => {
   return (m ? m[1] : String(expr).replace(/\\[a-z]+(\{[^}]*\})?/gi, ' ')).replace(/\s+/g, ' ').trim();
 };
 
+// Màu theo trang: dòng "🎨 Theme: #nền / #nhấn" (bất kỳ đâu ở cấp ngoài cùng) hoặc ô BG COLOR / ACCENT COLOR
+const HEX_RE = /#(?:[0-9a-f]{3}|[0-9a-f]{6})\b/gi;
+function takeTheme(blocks) {
+  let theme = null;
+  const out = blocks.filter((b) => {
+    if (b.type === 'paragraph' && /^🎨\s*theme\s*:/i.test(textOf(b))) {
+      const [bg, accent, text] = textOf(b).match(HEX_RE) || [];
+      theme = { bg, accent, text };
+      return false;
+    }
+    return true;
+  });
+  return { blocks: out, theme };
+}
+function propTheme(page) {
+  const get = (re) => { const e = Object.entries(page.properties || {}).find(([k]) => re.test(k)); return e && plain(e[1].rich_text || []).match(HEX_RE)?.[0]; };
+  const bg = get(/^(bg|background)\s*colou?r$/i), accent = get(/^accent\s*colou?r$/i), text = get(/^text\s*colou?r$/i);
+  return bg || accent || text ? { bg, accent, text } : null;
+}
+const hexRgb = (h) => { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map((c) => c + c).join(''); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); };
+const rgbHex = (a) => '#' + a.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+const mixHex = (a, b, t) => { const x = hexRgb(a), y = hexRgb(b); return rgbHex(x.map((v, i) => v + (y[i] - v) * t)); };
+const lum = (h) => { const [r, g, b] = hexRgb(h).map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+function themeStyle(t) {
+  if (!t || (!t.bg && !t.accent)) return '';
+  const v = [];
+  if (t.bg) {
+    const light = lum(t.bg) > .4;
+    const text = t.text || (light ? '#151515' : '#EDEDEE');
+    v.push(`--bg:${t.bg}`, `--text:${text}`, `--surface:${mixHex(t.bg, text, .06)}`, `--line:${mixHex(t.bg, text, .15)}`, `--muted:${mixHex(t.bg, text, .58)}`, `color-scheme:${light ? 'light' : 'dark'}`);
+  }
+  if (t.accent) v.push(`--accent:${t.accent}`);
+  return v.join(';');
+}
+
 // Thanh menu (synced block chứa Work / About me / Contact): website tự dựng thanh menu riêng.
 function takeNav(blocks) {
   const out = [];
@@ -157,7 +192,10 @@ async function crawlPage(id, parent = null) {
   const node = { id, page, title, slug, parent, blocks: [], databases: {} };
   pages.set(id, node);
   console.log('• ' + title);
-  const { blocks, nav } = takeNav(await getBlocks(id));
+  const navRes = takeNav(await getBlocks(id));
+  const { nav } = navRes;
+  const { blocks, theme } = takeTheme(navRes.blocks);
+  node.theme = propTheme(page) || theme;
   if (nav && !siteNav.length) {
     const walk = (bs) => bs.forEach((b) => {
       if (b.type === 'child_page') siteNav.push(normId(b.id));
@@ -601,7 +639,7 @@ async function renderPage(n, rootNode) {
   let content = await renderBlocks(blocks, ctx);
 
   const props = Object.entries(n.page.properties || {})
-    .filter(([k, p]) => p.type !== 'title' && !n.group?.hiddenProps.has(k))
+    .filter(([k, p]) => p.type !== 'title' && !n.group?.hiddenProps.has(k) && !/colou?r$/i.test(k))
     .map(([k, p]) => [k, propValue(p, { ...ctx, key: k })]).filter(([, v]) => v);
   const meta = props.length ? `<dl class="meta">${props.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join('')}</dl>` : '';
 
@@ -611,6 +649,16 @@ async function renderPage(n, rootNode) {
   const rootIcon = rootNode.page.icon?.type === 'emoji' ? rootNode.page.icon.emoji : '';
   const logo = rootNode.page.icon && rootNode.page.icon.type !== 'emoji' ? await media(fileUrl(rootNode.page.icon)) : '';
   const brandText = siteBrand || rootNode.title;
+  let theme = n.theme;
+  if (!theme) {
+    const tags = Object.values(n.page.properties || {}).find((p) => p.type === 'multi_select')?.multi_select || [];
+    for (const t of tags) {
+      const cat = [...pages.values()].find((x) => !x.page.parent?.data_source_id && !x.page.parent?.database_id && x.title.trim().toLowerCase() === t.name.trim().toLowerCase());
+      if (cat?.theme) { theme = cat.theme; break; }
+    }
+  }
+  theme ||= rootNode.theme;
+  const bodyStyle = themeStyle(theme);
 
   let pager = '';
   if (n.pager) {
@@ -632,6 +680,7 @@ async function renderPage(n, rootNode) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+${theme?.bg ? `<meta name="theme-color" content="${theme.bg}">` : ''}
 <title>${esc(isHome ? n.title : `${n.title} — ${rootNode.title}`)}</title>
 <meta name="description" content="${esc(desc)}">
 <meta property="og:title" content="${esc(n.title)}">
@@ -643,7 +692,7 @@ ${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" h
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="${ctx.root}style.css">
 </head>
-<body class="${isHome ? 'home' : 'sub'} page-${n.slug}">
+<body class="${isHome ? 'home' : 'sub'} page-${n.slug}"${bodyStyle ? ` style="${bodyStyle}"` : ''}>
 <header class="topbar"><a class="brand" href="${ctx.root}index.html" aria-label="${esc(brandText)} — Home">${logo ? `<img class="logo" src="${esc(logo)}" alt="">` : rootIcon ? `<span>${rootIcon}</span>` : ''}<span>${esc(brandText)}</span></a><nav class="site-nav">${navLinks}</nav></header>
 ${coverUrl ? `<div class="cover"><img src="${esc(coverUrl)}" alt=""></div>` : ''}
 <main class="wrap">
