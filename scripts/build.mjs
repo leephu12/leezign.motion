@@ -384,6 +384,8 @@ function rt(arr, ctx) {
     return s;
   }).join('');
 }
+// Chữ trượt khi hover: chữ cũ trượt lên, chữ mới trượt vào từ dưới (không đổi kích thước nút)
+const roll = (text) => `<span class="roll"><span data-text="${esc(text)}">${esc(text)}</span></span>`;
 const caption = (b, ctx) => { const c = rt(b[b.type]?.caption, ctx); return c ? `<figcaption>${c}</figcaption>` : ''; };
 
 function videoEmbed(url) {
@@ -432,7 +434,7 @@ async function renderBlock(b, ctx) {
       const r = d.rich_text || [];
       if (r.length && r.every((x) => x.href || !x.plain_text.trim()) && /→\s*$/.test(plain(r))) {
         const href = mapHref(r.find((x) => x.href).href, ctx);
-        return `<p class="more"><a class="btn" href="${esc(href)}">${esc(plain(r).trim())}</a></p>`;
+        return `<p class="more"><a class="btn" href="${esc(href)}">${roll(plain(r).trim())}</a></p>`;
       }
       return (t ? `<p class="${colorCls(d.color).trim()}">${t}</p>` : '<div class="spacer"></div>') + await kids();
     }
@@ -503,7 +505,7 @@ async function renderBlock(b, ctx) {
         return null;
       });
       if (cols.length > 1 && pills.every(Boolean))
-        return `<nav class="tag-row">${pills.map((p) => `<a href="${esc(p.href)}">${p.icon ? `<span>${p.icon}</span>` : ''}${esc(p.label)}</a>`).join('')}</nav>`;
+        return `<nav class="tag-row">${pills.map((p) => `<a href="${esc(p.href)}">${p.icon ? `<span class="ico">${p.icon}</span>` : ''}${roll(p.label)}</a>`).join('')}</nav>`;
       const ratios = cols.map((c) => c.column?.width_ratio || 1);
       let inner = '';
       for (const c of cols) inner += `<div class="col">${c.children ? await renderBlocks(c.children, ctx) : ''}</div>`;
@@ -666,7 +668,7 @@ async function renderPage(n, rootNode) {
     pager = `<nav class="pager">${prev ? `<a href="${linkFor(prev.id, ctx)}"><small>← Previous</small>${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a class="next" href="${linkFor(next.id, ctx)}"><small>Next →</small>${esc(next.title)}</a>` : '<span></span>'}</nav>`;
   }
   const navLinks = siteNav.map((id) => pages.get(id)).filter(Boolean)
-    .map((p) => `<a href="${linkFor(p.id, ctx)}"${p.id === n.id || n.parent?.id === p.id && !n.pager ? ' aria-current="page"' : ''}>${esc(p.title)}</a>`).join('');
+    .map((p) => `<a href="${linkFor(p.id, ctx)}"${p.id === n.id || n.parent?.id === p.id && !n.pager ? ' aria-current="page"' : ''}>${roll(p.title)}</a>`).join('');
   const isHome = n.slug === 'index';
   const desc = excerpt(n.blocks) || rootNode.title;
   const siteUrl = (process.env.SITE_URL || '').replace(/\/$/, '');

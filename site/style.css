@@ -175,3 +175,19 @@ a.chip:hover { border-color: var(--accent); color: var(--accent); }
 .page-about-me .content > p, .page-about-me .content > h2, .page-about-me .content > h3 { max-width: 760px; }
 .page-about-me .content figure.media { max-width: 900px; }
 .page-about-me .content h2 { margin-top: 1.8em; }
+
+/* ---- Motion: chữ trượt nhẹ khi hover ---- */
+.roll { display: inline-block; position: relative; overflow: hidden; vertical-align: bottom; line-height: 1.25; height: 1.25em; }
+.roll > span { display: inline-block; transition: transform .5s cubic-bezier(.2,.75,.2,1); }
+.roll > span::after { content: attr(data-text); position: absolute; left: 0; top: 100%; }
+a:hover .roll > span, a:focus-visible .roll > span { transform: translateY(-100%); }
+.tag-row a .ico { display: inline-block; transition: transform .5s cubic-bezier(.2,.75,.2,1); }
+.tag-row a:hover .ico { transform: translateX(-2px) rotate(-8deg) scale(1.08); }
+.card h3 { transition: color .2s, transform .45s cubic-bezier(.2,.75,.2,1); }
+.card:hover h3 { transform: translateX(6px); }
+.card .tags { transition: transform .45s .04s cubic-bezier(.2,.75,.2,1); }
+.card:hover .tags { transform: translateX(6px); }
+@media (prefers-reduced-motion: reduce) {
+  .roll > span, .tag-row a .ico, .card h3, .card .tags { transition: none; }
+  a:hover .roll > span, .card:hover h3, .card:hover .tags, .tag-row a:hover .ico { transform: none; }
+}
