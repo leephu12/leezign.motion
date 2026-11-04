@@ -272,7 +272,12 @@ async function crawlDatabase(block, parent) {
   const group = { id: normId(dbId), title: /^(view of |untitled$)/i.test(title.trim()) ? '' : title, items, dsId: res.dsId, hiddenProps: new Set(res.hidden || []) };
 
   // Gallery nhóm theo thuộc tính (VD: Work nhóm theo TAGS)
-  const gb = res.view?.configuration?.group_by;
+  let gb = res.view?.configuration?.group_by || res.view?.group_by;
+  // API chưa trả về nhóm cho gallery → gallery không lọc (tất cả dự án, VD trang Work) tự nhóm theo TAGS
+  if (!gb && res.view && !res.view.filter && res.dsId) {
+    const schema = await schemaOf(res.dsId);
+    if (schema.TAGS?.type === 'multi_select') gb = { type: 'multi_select', property_name: 'TAGS' };
+  }
   if (gb && ['select', 'multi_select'].includes(gb.type) && res.dsId) {
     const schema = await schemaOf(res.dsId);
     const [name, prop] = Object.entries(schema).find(([k, v]) => v.id === gb.property_id || k === gb.property_name) || [];
