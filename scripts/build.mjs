@@ -197,13 +197,39 @@ async function viaView(dbId) {
   const ref = list.results?.[0];
   if (!ref) return null;
   const view = await notion.views.retrieve({ view_id: ref.id });
-  let q = await notion.views.queries.create({ view_id: ref.id, page_size: 100 });
-  const ids = q.results.map((r) => r.id);
-  while (q.has_more && q.next_cursor) {
-    q = await notion.views.queries.results({ view_id: ref.id, query_id: q.id, start_cursor: q.next_cursor, page_size: 100 });
-    ids.push(...q.results.map((r) => r.id));
+  let ids;
+  try {
+    let q = await notion.views.queries.create({ view_id: ref.id, page_size: 100 });
+    ids = q.results.map((r) => r.id);
+    while (q.has_more && q.next_cursor) {
+      q = await notion.views.queries.results({ view_id: ref.id, query_id: q.id, start_cursor: q.next_cursor, page_size: 100 });
+      ids.push(...q.results.map((r) => r.id));
+    }
+  } catch (e) {
+    // Một số view (nhân bản) có thiết lập sắp xếp hỏng → tự lọc theo bộ lọc của view
+    console.warn('  ! view query lỗi (' + e.message + ') → dùng bộ lọc của view');
+    const args = { data_source_id: view.data_source_id };
+    if (view.filter) args.filter = view.filter;
+    let rows;
+    try { rows = await paginate((a) => notion.dataSources.query(a), args); }
+    catch (e2) { console.warn('  ! lọc thủ công: ' + e2.message); rows = (await paginate((a) => notion.dataSources.query(a), { data_source_id: view.data_source_id })).filter((r) => matchFilter(view.filter, r)); }
+    rows.sort((x, y) => x.created_time.localeCompare(y.created_time));
+    ids = rows.map((r) => r.id);
   }
   return { view, ids, dsId: view.data_source_id };
+}
+
+// Tự đánh giá bộ lọc view đơn giản (multi_select/select contains, checkbox) khi API không lọc được
+function matchFilter(f, row) {
+  if (!f) return true;
+  if (f.and) return f.and.every((x) => matchFilter(x, row));
+  if (f.or) return f.or.some((x) => matchFilter(x, row));
+  const p = Object.entries(row.properties).find(([k, v]) => k === f.property || v.id === f.property)?.[1];
+  if (!p) return true;
+  if (f.multi_select?.contains) return (p.multi_select || []).some((o) => o.name === f.multi_select.contains);
+  if (f.select?.equals) return p.select?.name === f.select.equals;
+  if (f.checkbox && 'equals' in f.checkbox) return !!p.checkbox === f.checkbox.equals;
+  return true;
 }
 
 async function viaQuery(dbId) {
