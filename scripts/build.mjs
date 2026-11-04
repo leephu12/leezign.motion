@@ -9,6 +9,7 @@ import crypto from 'node:crypto';
 
 const OUT = path.resolve('dist');
 const CACHE = path.resolve('.cache/media');
+const BUILD_V = Date.now().toString(36);
 const STYLE_SRC = path.resolve('site/style.css');
 const SCRIPT_SRC = path.resolve('site/main.js');
 
@@ -397,6 +398,59 @@ function videoEmbed(url) {
   if ((m = url.match(/loom\.com\/share\/(\w+)/))) return `https://www.loom.com/embed/${m[1]}`;
   return null;
 }
+
+// ---------- link ngoài: tỉ lệ video (oEmbed) + thẻ có ảnh cover (og:image) ----------
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+const fetchCache = new Map();
+async function getText(url, json = false) {
+  const key = url + json;
+  if (!fetchCache.has(key)) fetchCache.set(key, (async () => {
+    try {
+      const ctl = AbortSignal.timeout(12000);
+      const res = await fetch(url, { headers: { 'user-agent': UA, 'accept-language': 'en' }, redirect: 'follow', signal: ctl });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return json ? await res.json() : await res.text();
+    } catch (e) { console.warn('  ! không đọc được ' + url + ': ' + e.message); return null; }
+  })());
+  return fetchCache.get(key);
+}
+async function videoRatio(url) {
+  let api = null;
+  if (/vimeo\.com/.test(url)) api = 'https://vimeo.com/api/oembed.json?url=' + encodeURIComponent(url.replace('player.vimeo.com/video/', 'vimeo.com/'));
+  else if (/youtu/.test(url)) api = 'https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(url);
+  const j = api && await getText(api, true);
+  return j?.width && j?.height ? { w: j.width, h: j.height } : null;
+}
+async function embedFigure(src, origUrl, b, ctx) {
+  const r = await videoRatio(origUrl);
+  const portrait = r && r.h > r.w;
+  const style = r ? ` style="aspect-ratio:${r.w} / ${r.h}${portrait ? `;max-width:min(100%, calc(80vh * ${r.w} / ${r.h}))` : ''}"` : '';
+  return `<figure class="media"><div class="ratio${portrait ? ' portrait' : ''}"${style}><iframe src="${esc(src)}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>${b ? caption(b, ctx) : ''}</figure>`;
+}
+const decodeEnt = (s) => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n));
+async function ogInfo(url) {
+  const html = await getText(url);
+  if (!html) return {};
+  const meta = (k) => {
+    const m = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${k}["'][^>]*content=["']([^"']*)`, 'i'))
+      || html.match(new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*(?:property|name)=["']${k}["']`, 'i'));
+    return m ? decodeEnt(m[1]).trim() : '';
+  };
+  let image = meta('og:image') || meta('twitter:image');
+  if (image) try { image = new URL(image, url).href; } catch {}
+  return { image, title: meta('og:title') || meta('twitter:title') || decodeEnt(html.match(/<title[^>]*>([^<]*)/i)?.[1] || '').trim(), desc: meta('og:description'), site: meta('og:site_name') };
+}
+async function linkCard(url, label) {
+  const og = await ogInfo(url);
+  const host = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
+  const behance = url.match(/behance\.net\/gallery\/(\d+)/);
+  if (!og.image && behance) // không đọc được trang → dùng khung nhúng chính thức của Behance (có cover, bấm mở Behance)
+    return `<figure class="media behance-embed"><div class="ratio" style="aspect-ratio:404 / 316;max-width:404px"><iframe src="https://www.behance.net/embed/project/${behance[1]}?ilo0=1" allowfullscreen loading="lazy" allow="clipboard-write" referrerpolicy="strict-origin-when-cross-origin"></iframe></div><a class="bookmark" href="${esc(url)}" target="_blank" rel="noopener"><span>${esc(label || 'Xem trên Behance')}</span><span class="arrow">↗</span></a></figure>`;
+  const title = label || og.title || url.replace(/^https?:\/\//, '');
+  return `<a class="link-card${og.image ? '' : ' no-img'}" href="${esc(url)}" target="_blank" rel="noopener">`
+    + (og.image ? `<span class="lc-img"><img src="${esc(og.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></span>` : '')
+    + `<span class="lc-body"><span class="lc-title">${esc(title)}</span>${og.desc ? `<span class="lc-desc">${esc(og.desc)}</span>` : ''}<span class="lc-host">${esc(og.site || host)} ↗</span></span></a>`;
+}
 const isVideoFile = (u) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
 const isImageFile = (u) => /\.(png|jpe?g|gif|webp|avif|svg)(\?|$)/i.test(u);
 const videoTag = (src, cls = '') =>
@@ -461,7 +515,7 @@ async function renderBlock(b, ctx) {
     case 'video': {
       const raw = fileUrl(d); if (!raw) return '';
       const emb = d.type === 'external' && videoEmbed(raw);
-      if (emb) return `<figure class="media"><div class="ratio"><iframe src="${esc(emb)}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>${caption(b, ctx)}</figure>`;
+      if (emb) return embedFigure(emb, raw, b, ctx);
       return `<figure class="media">${videoTag(await media(raw))}${caption(b, ctx)}</figure>`;
     }
     case 'audio': return `<figure><audio controls src="${esc(await media(fileUrl(d)))}"></audio>${caption(b, ctx)}</figure>`;
@@ -475,17 +529,17 @@ async function renderBlock(b, ctx) {
     case 'embed': case 'link_preview': {
       const url = d.url; if (!url) return '';
       const emb = videoEmbed(url);
-      if (emb) return `<figure class="media"><div class="ratio"><iframe src="${esc(emb)}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>${caption(b, ctx)}</figure>`;
+      if (emb) return embedFigure(emb, url, b, ctx);
       if (isImageFile(url)) return `<figure class="media"><img src="${esc(url)}" loading="lazy" alt="">${caption(b, ctx)}</figure>`;
       if (isVideoFile(url)) return `<figure class="media">${videoTag(url)}${caption(b, ctx)}</figure>`;
+      if (/behance\.net|dribbble\.com|artstation\.com|instagram\.com|facebook\.com|linkedin\.com/i.test(url)) return linkCard(url, plain(d.caption));
       return `<figure class="media"><div class="ratio"><iframe src="${esc(url)}" loading="lazy" allowfullscreen></iframe></div>${caption(b, ctx)}</figure>`;
     }
     case 'bookmark': {
       const url = d.url; if (!url) return '';
       const emb = videoEmbed(url);
-      if (emb) return `<figure class="media"><div class="ratio"><iframe src="${esc(emb)}" allow="autoplay; fullscreen" allowfullscreen loading="lazy"></iframe></div></figure>`;
-      const label = plain(d.caption) || url.replace(/^https?:\/\//, '');
-      return `<a class="bookmark" href="${esc(url)}" target="_blank" rel="noopener"><span>${esc(label)}</span><span class="arrow">↗</span></a>`;
+      if (emb) return embedFigure(emb, url, b, ctx);
+      return linkCard(url, plain(d.caption));
     }
     case 'column_list': {
       const cols = b.children || [];
@@ -692,7 +746,7 @@ ${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" h
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="${ctx.root}style.css">
+<link rel="stylesheet" href="${ctx.root}style.css?v=${BUILD_V}">
 </head>
 <body class="${isHome ? 'home' : 'sub'} page-${n.slug}"${bodyStyle ? ` style="${bodyStyle}"` : ''}>
 <header class="topbar"><a class="brand" href="${ctx.root}index.html" aria-label="${esc(brandText)} — Home">${logo ? `<img class="logo" src="${esc(logo)}" alt="">` : rootIcon ? `<span>${rootIcon}</span>` : ''}<span>${esc(brandText)}</span></a><nav class="site-nav">${navLinks}</nav></header>
@@ -708,7 +762,7 @@ ${meta}
 ${pager}
 </main>
 <footer class="foot">${esc(siteFooter || `© ${new Date().getFullYear()} ${rootNode.title}`)}</footer>
-<script src="${ctx.root}main.js" defer></script>
+<script src="${ctx.root}main.js?v=${BUILD_V}" defer></script>
 </body>
 </html>`;
   return html.replaceAll('@@ROOT@@', ctx.root);

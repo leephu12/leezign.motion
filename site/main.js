@@ -6,7 +6,7 @@
   const io = new IntersectionObserver((entries) => {
     for (const e of entries) {
       const v = e.target;
-      if (e.isIntersecting && !reduce) v.play().catch(() => {});
+      if (e.isIntersecting) v.play().catch(() => {});
       else if (!v.dataset.userPlayed) v.pause();
     }
   }, { rootMargin: '120px' });
