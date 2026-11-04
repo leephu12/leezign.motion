@@ -237,7 +237,7 @@ async function crawlDatabase(block, parent) {
     if (!n.page.in_trash && !n.page.archived && n.title.trim()) items.push(n); // bỏ trang trống chưa đặt tên
   }
   const title = block.child_database?.title || res.title || '';
-  const group = { id: normId(dbId), title: /^view of /i.test(title) ? '' : title, items, dsId: res.dsId, hiddenProps: new Set(res.hidden || []) };
+  const group = { id: normId(dbId), title: /^(view of |untitled$)/i.test(title.trim()) ? '' : title, items, dsId: res.dsId, hiddenProps: new Set(res.hidden || []) };
 
   // Gallery nhóm theo thuộc tính (VD: Work nhóm theo TAGS)
   const gb = res.view?.configuration?.group_by;
