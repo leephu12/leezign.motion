@@ -14,13 +14,13 @@ const SCRIPT_SRC = path.resolve('site/main.js');
 
 const rawRoot = process.env.NOTION_PAGE_ID || '';
 const ROOT_ID = parseId(rawRoot);
-if (!ROOT_ID) fail('Thiếu NOTION_PAGE_ID (dán link trang Notion hoặc ID 32 ký tự).');
+if (!ROOT_ID) fail('Thiếu NOTION_PAGE_ID → Settings → Secrets and variables → Actions → thêm NOTION_PAGE_ID = link trang chính Notion.');
 
 let notion;
 if (process.env.NOTION_MOCK) {
   notion = (await import(path.resolve(process.env.NOTION_MOCK))).default;
 } else {
-  if (!process.env.NOTION_TOKEN) fail('Thiếu NOTION_TOKEN.');
+  if (!process.env.NOTION_TOKEN) fail('Thiếu NOTION_TOKEN → Settings → Secrets and variables → Actions → New repository secret, tên NOTION_TOKEN.');
   notion = new Client({ auth: process.env.NOTION_TOKEN });
 }
 
@@ -136,6 +136,7 @@ function stripNotionFooter(blocks) {
     if (b.type === 'equation' && /©/.test(b.equation.expression)) { siteFooter ||= eqText(b.equation.expression); found = true; i--; continue; }
     if (b.type === 'paragraph' && /^©/.test(textOf(b))) { siteFooter ||= textOf(b); found = true; i--; continue; }
     if (b.type === 'column_list' && deep(b.children, (c) => c[c.type]?.rich_text && isNavLine(c))) { found = true; i--; continue; }
+    if (b.type === 'paragraph' && /^←/.test(textOf(b)) && textOf(b).length < 40) { i--; continue; } // "← All work" ở cuối trang
     break;
   }
   return found ? blocks.slice(0, i) : blocks;
@@ -610,8 +611,18 @@ ${pager}
 
 // ---------- chạy ----------
 await fs.mkdir(CACHE, { recursive: true });
-console.log('Đang đọc Notion…');
-const root = await crawlPage(ROOT_ID);
+console.log('Đang đọc Notion… (trang gốc: ' + ROOT_ID + ')');
+let root;
+try { root = await crawlPage(ROOT_ID); }
+catch (e) {
+  const hints = {
+    unauthorized: 'NOTION_TOKEN sai hoặc đã bị thu hồi → tạo lại secret NOTION_TOKEN (mã bắt đầu bằng ntn_).',
+    object_not_found: 'Integration chưa được cấp quyền vào trang → mở trang chính trong Notion → ••• → Connections → thêm integration của bạn.',
+    restricted_resource: 'Integration chưa được cấp quyền vào trang → mở trang chính trong Notion → ••• → Connections → thêm integration của bạn.',
+    validation_error: 'NOTION_PAGE_ID không đúng → dán lại link trang chính Notion.',
+  };
+  fail((hints[e.code] || 'Lỗi khi đọc Notion') + '\n   Chi tiết: ' + (e.code ? e.code + ' – ' : '') + e.message);
+}
 assignPagers();
 await fs.rm(OUT, { recursive: true, force: true });
 await fs.mkdir(path.join(OUT, 'media'), { recursive: true });
