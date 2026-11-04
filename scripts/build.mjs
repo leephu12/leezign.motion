@@ -84,7 +84,8 @@ const fileUrl = (f) => !f ? '' : f.type === 'external' ? f.external?.url : f.fil
 const pages = new Map(); // id → node
 const slugs = new Set(['index', 'media']);
 const siteNav = [];      // các trang trong thanh menu (lấy từ synced block ở trang chủ)
-let siteFooter = '';     // dòng © lấy từ footer trong Notion
+let siteFooter = '';
+let siteBrand = '';      // chữ cạnh logo (lấy từ link đầu tiên trong thanh menu Notion)     // dòng © lấy từ footer trong Notion
 const dsSchemas = new Map();
 const lists = [];        // mọi gallery đã đọc, dùng để tính Previous/Next
 
@@ -158,7 +159,11 @@ async function crawlPage(id, parent = null) {
   console.log('• ' + title);
   const { blocks, nav } = takeNav(await getBlocks(id));
   if (nav && !siteNav.length) {
-    const walk = (bs) => bs.forEach((b) => { if (b.type === 'child_page') siteNav.push(normId(b.id)); walk(b.children || []); });
+    const walk = (bs) => bs.forEach((b) => {
+      if (b.type === 'child_page') siteNav.push(normId(b.id));
+      else if (!siteBrand && b.type === 'paragraph' && textOf(b)) siteBrand = textOf(b);
+      walk(b.children || []);
+    });
     walk(nav.children || []);
   }
   node.blocks = stripNotionFooter(stripNotionHeader(blocks));
@@ -547,7 +552,14 @@ function excerpt(blocks) {
 async function renderPage(n, rootNode) {
   const depth = n.slug === 'index' ? 0 : 2;
   const ctx = { root: depth ? '../../' : '', node: n };
-  let content = await renderBlocks(n.blocks, ctx);
+  let blocks = n.blocks;
+  let tagline = '';
+  const firstIdx = blocks.findIndex((b) => !isBlank(b));
+  if (n.slug === 'index' && /^heading_/.test(blocks[firstIdx]?.type || '')) {
+    tagline = `<h3 class="tagline">${rt(blocks[firstIdx][blocks[firstIdx].type].rich_text, ctx)}</h3>`;
+    blocks = blocks.filter((_, i) => i !== firstIdx);
+  }
+  let content = await renderBlocks(blocks, ctx);
 
   const props = Object.entries(n.page.properties || {})
     .filter(([k, p]) => p.type !== 'title' && !n.group?.hiddenProps.has(k))
@@ -558,6 +570,8 @@ async function renderPage(n, rootNode) {
   const icon = n.page.icon?.type === 'emoji' ? n.page.icon.emoji : '';
   const iconImg = n.page.icon && n.page.icon.type !== 'emoji' ? await media(fileUrl(n.page.icon)) : '';
   const rootIcon = rootNode.page.icon?.type === 'emoji' ? rootNode.page.icon.emoji : '';
+  const logo = rootNode.page.icon && rootNode.page.icon.type !== 'emoji' ? await media(fileUrl(rootNode.page.icon)) : '';
+  const brandText = siteBrand || rootNode.title;
 
   let pager = '';
   if (n.pager) {
@@ -584,19 +598,20 @@ async function renderPage(n, rootNode) {
 <meta property="og:title" content="${esc(n.title)}">
 <meta property="og:description" content="${esc(desc)}">
 ${ogImg ? `<meta property="og:image" content="${esc(ogImg)}">` : ''}
-${favicon ? `<link rel="icon" href="${favicon}">` : ''}
+${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" href="${favicon}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="${ctx.root}style.css">
 </head>
 <body class="${isHome ? 'home' : 'sub'}">
-<header class="topbar"><a class="brand" href="${ctx.root}index.html">${rootIcon ? `<span>${rootIcon}</span>` : ''}${esc(rootNode.title)}</a><nav class="site-nav">${navLinks}</nav></header>
+<header class="topbar"><a class="brand" href="${ctx.root}index.html" aria-label="${esc(brandText)} — Home">${logo ? `<img class="logo" src="${esc(logo)}" alt="">` : rootIcon ? `<span>${rootIcon}</span>` : ''}<span>${esc(brandText)}</span></a><nav class="site-nav">${navLinks}</nav></header>
 ${coverUrl ? `<div class="cover"><img src="${esc(coverUrl)}" alt=""></div>` : ''}
 <main class="wrap">
 <div class="page-head">
-${iconImg ? `<img class="page-icon" src="${esc(iconImg)}" alt="">` : icon && !isHome ? `<div class="page-icon">${icon}</div>` : ''}
+${iconImg && !isHome ? `<img class="page-icon" src="${esc(iconImg)}" alt="">` : icon && !isHome ? `<div class="page-icon">${icon}</div>` : ''}
 <h1>${esc(n.title)}</h1>
+${tagline}
 ${meta}
 </div>
 <article class="content">${content}</article>
