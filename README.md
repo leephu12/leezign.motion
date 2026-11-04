@@ -50,6 +50,12 @@ Work → toàn bộ dự án, nhóm theo TAGS (database gốc "The Portfolio" n�
 - **Thêm danh mục mới:** thêm lựa chọn trong cột TAGS. Nếu muốn có trang riêng và khu xem trước ở Home thì nhân bản một trang danh mục rồi đổi bộ lọc.
 - Website đọc gallery **đúng theo view trong Notion** (bộ lọc, thứ tự kéo thả, nhóm). Sắp xếp trong Notion thế nào, web hiện thế ấy. Nút Previous/Next trên web tự tính theo thứ tự ở trang Work.
 
+## Đổi màu từng trang
+
+- **Trang thường** (Home, Work, About me, Articles, các trang danh mục): dòng cuối trang `🎨 Theme: #nền / #nhấn`, ví dụ `🎨 Theme: #0B1220 / #5AA2FF`. Thêm mã thứ 3 nếu muốn tự chọn màu chữ.
+- **Trang dự án / bài viết:** điền ô **BG COLOR** và **ACCENT COLOR** trong database. Để trống thì tự lấy màu của danh mục (tag đầu tiên), rồi tới màu trang chủ.
+- Website tự tính màu chữ, nền khối và đường kẻ cho dễ đọc (nền sáng → chữ tối, nền tối → chữ sáng). Dòng Theme không hiện ra ngoài web.
+
 ## Website hiểu Notion thế nào
 
 | Trong Notion | Trên website |
