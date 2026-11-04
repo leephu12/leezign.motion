@@ -174,6 +174,7 @@ async function crawlPage(id, parent = null) {
 
 async function crawlChildren(blocks, node) {
   for (const b of blocks) {
+    if (b.type === 'child_page' && /^🗑/.test(b.child_page?.title || '')) continue;
     if (b.type === 'child_page') await crawlPage(b.id, node);
     else if (b.type === 'child_database') node.databases[normId(b.id)] = await crawlDatabase(b, node);
     if (b.children) await crawlChildren(b.children, node);
@@ -521,12 +522,19 @@ async function card(n, ctx) {
   return `<a class="card" href="${linkFor(n.id, ctx)}">${await thumbHtml(n)}<div class="card-body"><h3>${esc(n.title)}</h3>${t.length ? `<p class="tags">${t.map((x) => `<span>${esc(x)}</span>`).join('')}</p>` : ''}</div></a>`;
 }
 
+// Tag (TAGS) dẫn tới trang danh mục cùng tên (Branding, Motion Graphics…)
+function tagLink(name, ctx) {
+  const key = name.trim().toLowerCase();
+  for (const n of pages.values()) if (!n.page.parent?.data_source_id && !n.page.parent?.database_id && n.title.trim().toLowerCase() === key) return linkFor(n.id, ctx);
+  return null;
+}
+const chip = (name, ctx) => { const l = tagLink(name, ctx); return l ? `<a class="chip" href="${l}">${esc(name)}</a>` : `<span class="chip">${esc(name)}</span>`; };
 function propValue(p, ctx) {
   switch (p.type) {
     case 'rich_text': return rt(p.rich_text, ctx);
-    case 'select': return p.select ? `<span class="chip">${esc(p.select.name)}</span>` : '';
+    case 'select': return p.select ? chip(p.select.name, ctx) : '';
     case 'status': return '';
-    case 'multi_select': return p.multi_select.map((s) => `<span class="chip">${esc(s.name)}</span>`).join('');
+    case 'multi_select': return p.multi_select.map((s) => chip(s.name, ctx)).join('');
     case 'date': {
       if (!p.date?.start) return '';
       if (ctx.key && /year|năm/i.test(ctx.key)) return esc(p.date.start.slice(0, 4) + (p.date.end ? ' – ' + p.date.end.slice(0, 4) : ''));
@@ -604,7 +612,7 @@ ${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" h
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="${ctx.root}style.css">
 </head>
-<body class="${isHome ? 'home' : 'sub'}">
+<body class="${isHome ? 'home' : 'sub'} page-${n.slug}">
 <header class="topbar"><a class="brand" href="${ctx.root}index.html" aria-label="${esc(brandText)} — Home">${logo ? `<img class="logo" src="${esc(logo)}" alt="">` : rootIcon ? `<span>${rootIcon}</span>` : ''}<span>${esc(brandText)}</span></a><nav class="site-nav">${navLinks}</nav></header>
 ${coverUrl ? `<div class="cover"><img src="${esc(coverUrl)}" alt=""></div>` : ''}
 <main class="wrap">
@@ -642,7 +650,7 @@ assignPagers();
 await fs.rm(OUT, { recursive: true, force: true });
 await fs.mkdir(path.join(OUT, 'media'), { recursive: true });
 for (const n of pages.values()) {
-  if (!n.title.trim()) continue; // trang trống chưa đặt tên
+  if (!n.title.trim() || /^🗑/.test(n.title)) continue; // trang trống / trang dọn dẹp
   const html = await renderPage(n, root);
   const dir = n.slug === 'index' ? OUT : path.join(OUT, 'p', n.slug);
   await fs.mkdir(dir, { recursive: true });

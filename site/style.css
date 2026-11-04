@@ -163,3 +163,15 @@ th { background: var(--surface); }
 .bg-green{background:#5fb98c2e}.bg-blue{background:#5aa2e82e}.bg-purple{background:#a688e02e}.bg-pink{background:#e07fb32e}.bg-red{background:#e8705f2e}
 
 @media (prefers-reduced-motion: reduce) { .thumb img, .thumb video { transition: none; } }
+
+/* chip tag có link tới trang danh mục */
+a.chip { text-decoration: none; transition: border-color .2s, color .2s; }
+a.chip:hover { border-color: var(--accent); color: var(--accent); }
+
+/* About me: canh giữa toàn bộ khung mô tả */
+.page-about-me .page-head, .page-about-me .content { text-align: center; }
+.page-about-me .page-head h1 { margin: 0 auto; }
+.page-about-me .content > * { margin-left: auto; margin-right: auto; }
+.page-about-me .content > p, .page-about-me .content > h2, .page-about-me .content > h3 { max-width: 760px; }
+.page-about-me .content figure.media { max-width: 900px; }
+.page-about-me .content h2 { margin-top: 1.8em; }
