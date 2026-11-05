@@ -90,3 +90,9 @@ npm install
 NOTION_TOKEN=ntn_xxx NOTION_PAGE_ID="<link trang>" npm run build
 npm run preview
 ```
+
+## Hero trang chủ & hàng xem trước
+- **Ảnh chân dung ở hero:** ảnh đầu tiên đặt trong trang chủ Notion (phía trên hàng nút danh mục) sẽ hiện bên phải tiêu đề lớn. Thay ảnh trong Notion là web đổi theo. Khi có ảnh này, ảnh cover của trang chủ không hiện trên web.
+- **Màu chính:** dòng `🎨 Theme: nền / nhấn / chữ` cuối trang chủ, ví dụ `🎨 Theme: #EEEAE4 / #E3411D / #E3411D`.
+- **Xem trước mỗi danh mục:** web hiện đúng 1 hàng, lấp đầy bằng dự án FEATURED trước rồi tới các dự án khác cùng danh mục; thẻ tràn hàng được ẩn, xem đủ ở "View all".
+- **Video Dropbox:** dán link chia sẻ Dropbox (…dl=0) như bình thường, web tự đổi sang link phát trực tiếp.

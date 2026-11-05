@@ -58,7 +58,7 @@ async function media(url) {
   if (!url) return '';
   let u; try { u = new URL(url); } catch { return url; }
   const notionHosted = /amazonaws\.com|notion-static\.com|notion\.so|notionusercontent\.com|file\.notion\.so/.test(u.hostname);
-  if (!notionHosted) return url;
+  if (!notionHosted) return dropboxRaw(url);
   const ext = (path.extname(decodeURIComponent(u.pathname)) || '').toLowerCase().slice(0, 6);
   const name = crypto.createHash('sha1').update(u.pathname).digest('hex').slice(0, 16) + ext;
   const file = path.join(CACHE, name);
@@ -325,6 +325,8 @@ async function crawlDatabase(block, parent) {
       const valueOf = (n) => { const p = n.page.properties[name]; return p?.type === 'select' ? [p.select?.name].filter(Boolean) : (p?.multi_select || []).map((o) => o.name); };
       group.groups = options.map((o) => ({ name: o.name, items: items.filter((n) => valueOf(n).includes(o.name)) }))
         .filter((g) => g.items.length);
+      // nhóm tự động mà có bài không gắn tag (VD: Articles) → hiện dạng lưới thường để không mất bài nào
+      if (!(res.view?.configuration?.group_by || res.view?.group_by) && items.some((n) => !valueOf(n).length)) delete group.groups;
     }
   }
   lists.push(group);
@@ -452,6 +454,13 @@ async function linkCard(url, label) {
     + `<span class="lc-body"><span class="lc-title">${esc(title)}</span>${og.desc ? `<span class="lc-desc">${esc(og.desc)}</span>` : ''}<span class="lc-host">${esc(og.site || host)} ↗</span></span></a>`;
 }
 const isVideoFile = (u) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
+// Link Dropbox dạng xem (…&dl=0) → link file thật (raw=1) để <video>/<img> phát được
+const dropboxRaw = (u) => {
+  if (!u || !/^(https?:\/\/)?([\w-]+\.)?dropbox\.com\//.test(u)) return u;
+  try { const x = new URL(u); x.searchParams.delete('dl'); x.searchParams.set('raw', '1'); return x.href; } catch { return u; }
+};
+// Emoji dán từ Facebook (ảnh static.xx.fbcdn.net/emoji.php) → hiển thị bằng chữ emoji
+const fbEmoji = (u) => { const m = (u || '').match(/fbcdn\.net\/images\/emoji\.php\/.*\/([0-9a-f_]+)\.png/i); return m ? m[1].split('_').map((h) => String.fromCodePoint(parseInt(h, 16))).join('') : null; };
 const isImageFile = (u) => /\.(png|jpe?g|gif|webp|avif|svg)(\?|$)/i.test(u);
 const videoTag = (src, cls = '') =>
   `<video class="${cls}" src="${esc(src)}" muted loop playsinline autoplay preload="metadata" controls></video>`;
@@ -473,6 +482,7 @@ async function renderBlocks(blocks, ctx) {
       html += `<${tag}${type === 'to_do' ? ' class="todo"' : ''}>${items}</${tag}>`;
       continue;
     }
+    if (/^heading_/.test(b.type) && plain(b[b.type].rich_text).trim()) ctx.heading = plain(b[b.type].rich_text);
     html += await renderBlock(b, ctx);
   }
   return html;
@@ -509,6 +519,8 @@ async function renderBlock(b, ctx) {
     case 'code': return `<pre><code class="lang-${esc(d.language)}">${esc(plain(d.rich_text))}</code></pre>${caption(b, ctx)}`;
     case 'equation': return /\\text\{/.test(d.expression) ? `<p class="eq-text">${esc(eqText(d.expression))}</p>` : `<p class="eq-block"><code>${esc(d.expression)}</code></p>`;
     case 'image': {
+      const emo = fbEmoji(fileUrl(d));
+      if (emo) return `<p class="emoji-line">${emo}</p>`;
       const src = await media(fileUrl(d));
       return src ? `<figure class="media"><img src="${esc(src)}" alt="${esc(plain(d.caption))}" loading="lazy">${caption(b, ctx)}</figure>` : '';
     }
@@ -530,15 +542,17 @@ async function renderBlock(b, ctx) {
       const url = d.url; if (!url) return '';
       const emb = videoEmbed(url);
       if (emb) return embedFigure(emb, url, b, ctx);
-      if (isImageFile(url)) return `<figure class="media"><img src="${esc(url)}" loading="lazy" alt="">${caption(b, ctx)}</figure>`;
-      if (isVideoFile(url)) return `<figure class="media">${videoTag(url)}${caption(b, ctx)}</figure>`;
-      if (/behance\.net|dribbble\.com|artstation\.com|instagram\.com|facebook\.com|linkedin\.com/i.test(url)) return linkCard(url, plain(d.caption));
+      if (isImageFile(url)) return `<figure class="media"><img src="${esc(dropboxRaw(url))}" loading="lazy" alt="">${caption(b, ctx)}</figure>`;
+      if (isVideoFile(url)) return `<figure class="media">${videoTag(dropboxRaw(url))}${caption(b, ctx)}</figure>`;
+      if (/dropbox\.com|behance\.net|dribbble\.com|artstation\.com|instagram\.com|facebook\.com|linkedin\.com/i.test(url)) return linkCard(url, plain(d.caption));
       return `<figure class="media"><div class="ratio"><iframe src="${esc(url)}" loading="lazy" allowfullscreen></iframe></div>${caption(b, ctx)}</figure>`;
     }
     case 'bookmark': {
       const url = d.url; if (!url) return '';
       const emb = videoEmbed(url);
       if (emb) return embedFigure(emb, url, b, ctx);
+      if (/dropbox\.com/.test(url) && isVideoFile(url)) return `<figure class="media">${videoTag(dropboxRaw(url))}${caption(b, ctx)}</figure>`;
+      if (/dropbox\.com/.test(url) && isImageFile(url)) return `<figure class="media"><img src="${esc(dropboxRaw(url))}" loading="lazy" alt="">${caption(b, ctx)}</figure>`;
       return linkCard(url, plain(d.caption));
     }
     case 'column_list': {
@@ -590,6 +604,14 @@ async function renderBlock(b, ctx) {
     case 'child_database': {
       const g = ctx.node.databases[normId(b.id)];
       if (!g || !g.items.length) return '';
+      if (ctx.node.slug === 'index' && ctx.heading) {
+        // Trang chủ: 1 hàng xem trước. Dự án FEATURED đứng trước, còn chỗ thì lấp bằng các dự án khác cùng danh mục
+        const cat = [...pages.values()].find((x) => x !== ctx.node && !x.page.parent?.data_source_id && !x.page.parent?.database_id && x.title.trim().toLowerCase() === ctx.heading.trim().toLowerCase());
+        const full = cat ? Object.values(cat.databases || {}).filter(Boolean).flatMap((x) => x.items) : [];
+        const items = [...new Set([...g.items, ...full])].slice(0, 8);
+        let c = ''; for (const n of items) c += await card(n, ctx);
+        return `<section class="gallery preview"><div class="grid one-row">${c}</div></section>`;
+      }
       const grid = async (items) => { let c = ''; for (const n of items) c += await card(n, ctx); return `<div class="grid">${c}</div>`; };
       if (g.groups) {
         let out = '';
@@ -605,6 +627,7 @@ async function renderBlock(b, ctx) {
 // Ảnh/video đại diện: cover → thuộc tính Files → media đầu tiên trong trang
 function findFirstMedia(blocks) {
   for (const b of blocks || []) {
+    if (b.type === 'image' && fbEmoji(fileUrl(b.image))) continue;
     if (b.type === 'image' || b.type === 'video') return { kind: b.type, url: fileUrl(b[b.type]), external: b[b.type].type === 'external' };
     if (b.type === 'embed' && b.embed.url && (isImageFile(b.embed.url) || isVideoFile(b.embed.url)))
       return { kind: isVideoFile(b.embed.url) ? 'video' : 'image', url: b.embed.url, external: true };
@@ -692,6 +715,13 @@ async function renderPage(n, rootNode) {
     tagline = `<h3 class="tagline">${rt(blocks[firstIdx][blocks[firstIdx].type].rich_text, ctx)}</h3>`;
     blocks = blocks.filter((_, i) => i !== firstIdx);
   }
+  let heroImg = '';
+  if (n.slug === 'index') {
+    // Ảnh đầu tiên nằm trước hàng nút danh mục = ảnh chân dung ở hero
+    const firstCols = blocks.findIndex((b) => b.type === 'column_list' || b.type === 'child_database');
+    const imgIdx = blocks.findIndex((b, i) => b.type === 'image' && (firstCols < 0 || i < firstCols));
+    if (imgIdx >= 0) { heroImg = await media(fileUrl(blocks[imgIdx].image)); blocks = blocks.filter((_, i) => i !== imgIdx); }
+  }
   let content = await renderBlocks(blocks, ctx);
 
   const props = Object.entries(n.page.properties || {})
@@ -750,13 +780,15 @@ ${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" h
 </head>
 <body class="${isHome ? 'home' : 'sub'} page-${n.slug}"${bodyStyle ? ` style="${bodyStyle}"` : ''}>
 <header class="topbar"><a class="brand" href="${ctx.root}index.html" aria-label="${esc(brandText)} — Home">${logo ? `<img class="logo" src="${esc(logo)}" alt="">` : rootIcon ? `<span>${rootIcon}</span>` : ''}<span>${esc(brandText)}</span></a><nav class="site-nav">${navLinks}</nav></header>
-${coverUrl ? `<div class="cover"><img src="${esc(coverUrl)}" alt=""></div>` : ''}
+${coverUrl && !heroImg ? `<div class="cover"><img src="${esc(coverUrl)}" alt=""></div>` : ''}
 <main class="wrap">
-<div class="page-head">
+<div class="page-head${heroImg ? ' hero' : ''}">
+${heroImg ? `<figure class="hero-img"><img src="${esc(heroImg)}" alt="${esc(n.title)}"></figure><div class="hero-text">` : ''}
 ${iconImg && !isHome ? `<img class="page-icon" src="${esc(iconImg)}" alt="">` : icon && !isHome ? `<div class="page-icon">${icon}</div>` : ''}
 <h1>${esc(n.title)}</h1>
 ${tagline}
 ${meta}
+${heroImg ? '</div>' : ''}
 </div>
 <article class="content">${content}</article>
 ${pager}
