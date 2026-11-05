@@ -442,8 +442,25 @@ async function ogInfo(url) {
   if (image) try { image = new URL(image, url).href; } catch {}
   return { image, title: meta('og:title') || meta('twitter:title') || decodeEnt(html.match(/<title[^>]*>([^<]*)/i)?.[1] || '').trim(), desc: meta('og:description'), site: meta('og:site_name') };
 }
+// Tải ảnh ngoài (ảnh cover bài báo…) về website → không phụ thuộc site gốc (http, chặn hotlink…)
+async function cacheExternal(url) {
+  try {
+    const u = new URL(url);
+    const ext = (path.extname(u.pathname) || '.jpg').toLowerCase().slice(0, 5);
+    const name = 'x' + crypto.createHash('sha1').update(url).digest('hex').slice(0, 15) + (/^\.(jpe?g|png|gif|webp|avif)$/.test(ext) ? ext : '.jpg');
+    const file = path.join(CACHE, name);
+    if (!fss.existsSync(file)) {
+      const res = await fetch(url, { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(15000) });
+      if (!res.ok || !/image/.test(res.headers.get('content-type') || '')) throw new Error('HTTP ' + res.status);
+      await fs.writeFile(file, Buffer.from(await res.arrayBuffer()));
+    }
+    usedMedia.add(name);
+    return '@@ROOT@@media/' + name;
+  } catch (e) { console.warn('  ! không tải được ảnh ' + url + ': ' + e.message); return url.replace(/^http:/, 'https:'); }
+}
 async function linkCard(url, label) {
   const og = await ogInfo(url);
+  if (og.image) og.image = await cacheExternal(og.image);
   const host = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
   const behance = url.match(/behance\.net\/gallery\/(\d+)/);
   if (!og.image && behance) // không đọc được trang → dùng khung nhúng chính thức của Behance (có cover, bấm mở Behance)
@@ -464,6 +481,8 @@ async function videoFromLink(url, b, ctx, poster = '') {
 }
 // Các link nằm trong đoạn chữ (bỏ link nội bộ Notion)
 const linksIn = (r) => (r || []).map((x) => x.href).filter((h) => h && /^https?:/.test(h) && !/notion\.(so|site|com)/.test(h));
+// Bỏ tham số theo dõi (fbclid, utm…) khỏi link
+const cleanUrl = (u) => { try { const x = new URL(u); [...x.searchParams.keys()].filter((k) => /^(fbclid|utm_|gclid|mibextid)/i.test(k)).forEach((k) => x.searchParams.delete(k)); return x.href; } catch { return u; } };
 const isVideoFile = (u) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
 // Link Dropbox dạng xem (…&dl=0) → link file thật (raw=1) để <video>/<img> phát được
 const dropboxRaw = (u) => {
@@ -517,6 +536,14 @@ async function renderBlock(b, ctx) {
     }
     case 'heading_1': case 'heading_2': case 'heading_3': {
       const lvl = Number(b.type.slice(-1)) + 1; // h1 dành cho tiêu đề trang
+      const r = d.rich_text || [];
+      // Tiêu đề chỉ gồm 1 link ngoài (VD: "Press & Features" → bài báo) → tiêu đề + thẻ bài viết có ảnh cover
+      const hl = linksIn(r);
+      if (hl.length === 1 && r.every((x) => x.href || !x.plain_text.trim()) && !d.is_toggleable) {
+        const text = plain(r).trim();
+        const card = isVideoLink(hl[0]) ? await videoFromLink(hl[0], null, ctx) : await linkCard(cleanUrl(hl[0]), '');
+        return `<h${lvl} class="${colorCls(d.color).trim()}">${esc(text)}</h${lvl}>${card}`;
+      }
       const h = `<h${lvl} class="${colorCls(d.color).trim()}">${rt(d.rich_text, ctx)}</h${lvl}>`;
       return d.is_toggleable ? `<details><summary>${h}</summary>${await kids()}</details>` : h;
     }
