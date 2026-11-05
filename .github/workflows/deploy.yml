@@ -48,7 +48,6 @@ jobs:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN || vars.NOTION_TOKEN }}
           NOTION_PAGE_ID: ${{ vars.NOTION_PAGE_ID || secrets.NOTION_PAGE_ID }}
           SITE_URL: ${{ vars.SITE_URL || secrets.SITE_URL }}
-          DEBUG_DROPBOX: "1"
 
       - uses: actions/configure-pages@v5
 

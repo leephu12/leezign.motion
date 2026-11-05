@@ -96,3 +96,9 @@ npm run preview
 - **Màu chính:** dòng `🎨 Theme: nền / nhấn / chữ` cuối trang chủ, ví dụ `🎨 Theme: #EEEAE4 / #E3411D / #E3411D`.
 - **Xem trước mỗi danh mục:** web hiện đúng 1 hàng, lấp đầy bằng dự án FEATURED trước rồi tới các dự án khác cùng danh mục; thẻ tràn hàng được ẩn, xem đủ ở "View all".
 - **Video Dropbox:** dán link chia sẻ Dropbox (…dl=0) như bình thường, web tự đổi sang link phát trực tiếp.
+
+## Video tổng & link trên ảnh
+- **Video tổng:** tạo một callout trong Notion, dán link video vào (Dropbox, Vimeo, YouTube, Loom hoặc file .mp4). Dán dạng link hay dạng xem trước (link preview/embed) đều được. Web sẽ hiện thẳng video, không hiện khung callout.
+- **Ảnh có link:** Notion API không đọc được link gắn trực tiếp lên ảnh. Hãy dán link vào **chú thích (caption)** của ảnh:
+  - link video (Dropbox/Vimeo/YouTube…) → web hiện video đó, ảnh làm hình chờ;
+  - link khác (bài báo, Behance…) → bấm vào ảnh sẽ mở link.

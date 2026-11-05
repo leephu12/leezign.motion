@@ -93,7 +93,6 @@ const lists = [];        // mọi gallery đã đọc, dùng để tính Previou
 async function getBlocks(id) {
   const blocks = await paginate((a) => notion.blocks.children.list(a), { block_id: id });
   for (const b of blocks) {
-    if (process.env.DEBUG_DROPBOX && /dropbox/i.test(JSON.stringify(b))) console.log('DBX ' + JSON.stringify({ parent: id, ...b }).slice(0, 2500));
     if (b.type === 'synced_block' && b.synced_block?.synced_from?.block_id) {
       b.children = await getBlocks(b.synced_block.synced_from.block_id); // bản sao → đọc khối gốc
     } else if (b.has_children && b.type !== 'child_page' && b.type !== 'child_database') {
@@ -454,6 +453,17 @@ async function linkCard(url, label) {
     + (og.image ? `<span class="lc-img"><img src="${esc(og.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></span>` : '')
     + `<span class="lc-body"><span class="lc-title">${esc(title)}</span>${og.desc ? `<span class="lc-desc">${esc(og.desc)}</span>` : ''}<span class="lc-host">${esc(og.site || host)} ↗</span></span></a>`;
 }
+// Link video (YouTube / Vimeo / Loom / Dropbox / file .mp4…) → khung video; không phải video → null
+const isVideoLink = (u) => !!u && (!!videoEmbed(u) || isVideoFile(u));
+async function videoFromLink(url, b, ctx, poster = '') {
+  if (!url) return null;
+  const emb = videoEmbed(url);
+  if (emb) return embedFigure(emb, url, b, ctx);
+  if (isVideoFile(url)) return `<figure class="media">${videoTag(dropboxRaw(url)).replace('<video ', poster ? `<video poster="${esc(poster)}" ` : '<video ')}${b ? caption(b, ctx) : ''}</figure>`;
+  return null;
+}
+// Các link nằm trong đoạn chữ (bỏ link nội bộ Notion)
+const linksIn = (r) => (r || []).map((x) => x.href).filter((h) => h && /^https?:/.test(h) && !/notion\.(so|site|com)/.test(h));
 const isVideoFile = (u) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
 // Link Dropbox dạng xem (…&dl=0) → link file thật (raw=1) để <video>/<img> phát được
 const dropboxRaw = (u) => {
@@ -497,6 +507,8 @@ async function renderBlock(b, ctx) {
       const t = rt(d.rich_text, ctx);
       // Đoạn chỉ gồm một link kết thúc bằng "→" (VD: "View all Branding →") hiển thị như nút bấm
       const r = d.rich_text || [];
+      const onlyLinks = r.length && r.every((x) => x.href || !x.plain_text.trim());
+      if (onlyLinks && linksIn(r).length === 1 && isVideoLink(linksIn(r)[0])) return videoFromLink(linksIn(r)[0], null, ctx);
       if (r.length && r.every((x) => x.href || !x.plain_text.trim()) && /→\s*$/.test(plain(r))) {
         const href = mapHref(r.find((x) => x.href).href, ctx);
         return `<p class="more"><a class="btn" href="${esc(href)}">${roll(plain(r).trim())}</a></p>`;
@@ -510,6 +522,16 @@ async function renderBlock(b, ctx) {
     }
     case 'quote': return `<blockquote class="${colorCls(d.color).trim()}">${rt(d.rich_text, ctx)}${await kids()}</blockquote>`;
     case 'callout': {
+      // Callout chứa link video (trong chữ, hoặc khối link/embed bên trong) → hiển thị video, bỏ khung callout
+      const vids = linksIn(d.rich_text).filter(isVideoLink);
+      if (vids.length) {
+        const rest = (d.rich_text || []).filter((x) => !x.href || !isVideoLink(x.href));
+        const restText = plain(rest).trim() && !/^https?:\/\/\S+$/.test(plain(rest).trim()) ? `<p>${rt(rest, ctx)}</p>` : '';
+        let out = ''; for (const u of vids) out += await videoFromLink(u, null, ctx);
+        return `<div class="callout-video">${restText}${out}${await kids()}</div>`;
+      }
+      if ((b.children || []).length && b.children.every((c) => isBlank(c) || ['video', 'embed', 'link_preview', 'bookmark'].includes(c.type) && isVideoLink(c[c.type]?.url || fileUrl(c[c.type])) || c.type === 'paragraph' && linksIn(c.paragraph.rich_text).some(isVideoLink))
+        && !plain(d.rich_text).trim()) return `<div class="callout-video">${await kids()}</div>`;
       const iconUrl = d.icon && d.icon.type !== 'emoji' ? fileUrl(d.icon) : '';
       const icon = d.icon?.type === 'emoji' ? `<span class="callout-icon">${d.icon.emoji}</span>`
         : iconUrl ? `<img class="callout-icon" src="${esc(iconUrl)}" alt="" onerror="this.remove()">` : '';
@@ -523,6 +545,14 @@ async function renderBlock(b, ctx) {
       const emo = fbEmoji(fileUrl(d));
       if (emo) return `<p class="emoji-line">${emo}</p>`;
       const src = await media(fileUrl(d));
+      const capLinks = linksIn(d.caption);
+      const capText = plain(d.caption).trim();
+      const capIsLink = capLinks.length && (capText === '' || /^https?:\/\/\S+$/.test(capText) || (d.caption || []).every((x) => x.href || !x.plain_text.trim()));
+      if (src && capLinks.length) {
+        const vid = isVideoLink(capLinks[0]) && await videoFromLink(capLinks[0], capIsLink ? null : b, ctx, src);
+        if (vid) return vid;
+        return `<figure class="media"><a class="img-link" href="${esc(capLinks[0])}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="${esc(capText)}" loading="lazy"></a>${capIsLink ? '' : caption(b, ctx)}</figure>`;
+      }
       return src ? `<figure class="media"><img src="${esc(src)}" alt="${esc(plain(d.caption))}" loading="lazy">${caption(b, ctx)}</figure>` : '';
     }
     case 'video': {
