@@ -93,6 +93,7 @@ const lists = [];        // mọi gallery đã đọc, dùng để tính Previou
 async function getBlocks(id) {
   const blocks = await paginate((a) => notion.blocks.children.list(a), { block_id: id });
   for (const b of blocks) {
+    if (process.env.DEBUG_DROPBOX && /dropbox/i.test(JSON.stringify(b))) console.log('DBX ' + JSON.stringify({ parent: id, ...b }).slice(0, 2500));
     if (b.type === 'synced_block' && b.synced_block?.synced_from?.block_id) {
       b.children = await getBlocks(b.synced_block.synced_from.block_id); // bản sao → đọc khối gốc
     } else if (b.has_children && b.type !== 'child_page' && b.type !== 'child_database') {
