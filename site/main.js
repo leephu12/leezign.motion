@@ -35,3 +35,18 @@
     io.observe(el);
   });
 })();
+
+// Video Dropbox không phát được (link đang giới hạn quyền xem/tải) → hiện nút mở video trên Dropbox thay vì khung đen
+(() => {
+  document.querySelectorAll('video[src*="dropbox"]').forEach((v) => {
+    const fail = () => {
+      const u = new URL(v.src); u.searchParams.delete('raw'); u.searchParams.set('dl', '0');
+      const a = document.createElement('a');
+      a.className = 'bookmark video-fallback'; a.href = u.href; a.target = '_blank'; a.rel = 'noopener';
+      a.innerHTML = '<span>▶ Xem video trên Dropbox</span><span class="arrow">↗</span>';
+      v.replaceWith(a);
+    };
+    v.addEventListener('error', fail);
+    if (v.error) fail();
+  });
+})();
