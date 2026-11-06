@@ -901,8 +901,8 @@ ${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" h
 </head>
 <body class="${isHome ? 'home' : 'sub'} page-${n.slug}"${bodyStyle ? ` style="${bodyStyle}"` : ''}>
 <header class="topbar"><a class="brand" href="${ctx.root}index.html" aria-label="${esc(brandText)} — Home">${logo ? `<img class="logo" src="${esc(logo)}" alt="">` : rootIcon ? `<span>${rootIcon}</span>` : ''}<span>${esc(brandText)}</span></a><nav class="site-nav">${navLinks}</nav></header>
-${coverUrl && !heroImg ? `<div class="cover"><img src="${esc(coverUrl)}" alt=""></div>` : ''}
 <main class="wrap">
+${coverUrl && !heroImg ? `<div class="cover"><img src="${esc(coverUrl)}" alt=""></div>` : ''}
 <div class="page-head${heroImg ? ' hero' : ''}">
 ${heroImg ? `<figure class="hero-img"><img src="${esc(heroImg)}" alt="${esc(n.title)}"></figure><div class="hero-text">` : ''}
 ${iconImg && !isHome ? `<img class="page-icon" src="${esc(iconImg)}" alt="">` : icon && !isHome ? `<div class="page-icon">${icon}</div>` : ''}

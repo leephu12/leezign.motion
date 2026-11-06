@@ -48,13 +48,21 @@
     if (el.textContent.trim().split(/\s+/).length < 4) return;
     if (splitWords(el)) items.push({ el, kind: 'words', words: [...el.querySelectorAll('.w')], cur: -1 });
   });
-  // 2) Khối (ảnh, video, thẻ dự án, tiêu đề…) trượt lên + rõ dần
-  const blockSel = '.content > *:not(.gallery):not(.cta):not(.ab-contact), .gallery > h2, .grid .card, .ab-wide, .ab-row';
+  // 2) Khối trượt lên + rõ dần theo cuộn (lần lượt từng thẻ trong hàng); ảnh/video/hàng dự án phóng to khi tới giữa màn hình rồi thu lại khi cuộn qua
+  const blockSel = '.content > *:not(.gallery):not(.cta):not(.ab-contact), .gallery > h2, .grid .card, .ab-wide, .ab-row, .cover';
+  const scaleSel = '.cover, .ab-wide, .content > figure.media, .callout-video, .grid .row';
+  const find = (el) => items.find((x) => x.el === el);
   document.querySelectorAll(blockSel).forEach((el) => {
-    if (items.some((x) => x.el === el)) return;
+    if (find(el)) return;
     if (el.parentElement.closest('.ab-row') && !el.matches('.grid .card')) return;
-    items.push({ el, kind: 'block', cur: -1 });
+    const row = el.matches('.grid .card') ? el.parentElement : null;
+    items.push({ el, kind: 'block', cur: 0, delay: row ? [...row.children].indexOf(el) : 0 });
   });
+  document.querySelectorAll(scaleSel).forEach((el) => {
+    const it = find(el);
+    if (it) it.scale = true; else items.push({ el, kind: 'scale', cur: 1, scale: true });
+  });
+  items.forEach((it) => { it.s = 0.9; it.el.classList.add('fx'); });
 
   const clamp = (v) => Math.max(0, Math.min(1, v));
   const ease = (t) => 1 - Math.pow(1 - t, 3);
@@ -67,23 +75,34 @@
     let moving = false;
     items.forEach((it, i) => {
       const r = rects[i];
-      let target;
+      let target = 1;
       if (it.kind === 'words') target = clamp((vh * 0.92 - r.top) / (vh * 0.4 + r.height * 0.6));
-      else target = clamp((vh * 1.02 - r.top) / (vh * 0.3));
+      else if (it.kind === 'block') target = clamp((vh * 1.0 - r.top - (it.delay || 0) * vh * 0.06) / (vh * 0.26));
       if (atEnd) target = 1;
-      if (it.cur < 0) it.cur = target; // lần đầu: đặt ngay, không chạy
-      const next = it.cur + (target - it.cur) * 0.16;
+      if (it.cur < 0) it.cur = target;
+      const next = it.cur + (target - it.cur) * 0.14;
       it.cur = Math.abs(target - next) < 0.002 ? target : next;
       if (it.cur !== target) moving = true;
-      if (r.bottom < -200 || r.top > vh + 200) { if (it.kind === 'block') it.el.style.opacity = it.cur < 1 ? 0 : ''; return; }
-      if (it.kind === 'block') {
-        const e = ease(it.cur);
-        it.el.style.opacity = e >= 1 ? '' : e.toFixed(3);
-        it.el.style.transform = e >= 1 ? '' : `translate3d(0, ${((1 - e) * 56).toFixed(1)}px, 0)`;
-      } else {
+      let sTarget = 1;
+      if (it.scale) {
+        // khoảng cách từ tâm phần tử tới tâm màn hình: ở giữa = to nhất, lệch lên/xuống = thu nhỏ
+        const d = Math.min(1, Math.abs(r.top + r.height / 2 - vh / 2) / (vh / 2 + Math.min(r.height, vh) / 2));
+        sTarget = 0.88 + 0.12 * (1 - d * d);
+        const ns = it.s + (sTarget - it.s) * 0.14;
+        it.s = Math.abs(sTarget - ns) < 0.0005 ? sTarget : ns;
+        if (it.s !== sTarget) moving = true;
+      }
+      if (r.bottom < -300 || r.top > vh + 300) return;
+      if (it.kind === 'words') {
         const n = it.words.length, pos = it.cur * (n + 3);
         it.words.forEach((w, k) => { const o = 0.16 + 0.84 * clamp(pos - k); w.style.opacity = o >= 1 ? '' : o.toFixed(3); });
+        return;
       }
+      let e = ease(it.cur); if (e > 0.998) e = 1;
+      const y = it.kind === 'block' && e < 1 ? (1 - e) * 70 : 0;
+      const sc = it.scale && Math.abs(it.s - 1) > 0.0005 ? it.s : 1;
+      it.el.style.opacity = e >= 1 ? '' : e.toFixed(3);
+      it.el.style.transform = (y || sc !== 1) ? `translate3d(0, ${y.toFixed(1)}px, 0) scale(${sc.toFixed(4)})` : '';
     });
     if (moving) raf = requestAnimationFrame(frame);
   };
