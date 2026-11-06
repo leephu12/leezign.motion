@@ -900,7 +900,7 @@ ${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" h
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="${ctx.root}style.css?v=${BUILD_V}">
 </head>
-<body class="${isHome ? 'home' : 'sub'} page-${n.slug}"${bodyStyle ? ` style="${bodyStyle}"` : ''}>
+<body class="${isHome ? 'home' : 'sub'}${n.page.parent?.data_source_id || n.page.parent?.database_id ? ' project' : ''} page-${n.slug}"${bodyStyle ? ` style="${bodyStyle}"` : ''}>
 <header class="topbar"><a class="brand" href="${ctx.root}index.html" aria-label="${esc(brandText)} — Home">${logo ? `<img class="logo" src="${esc(logo)}" alt="">` : rootIcon ? `<span>${rootIcon}</span>` : ''}<span>${esc(brandText)}</span></a><nav class="site-nav">${navLinks}</nav></header>
 <main class="wrap">
 ${coverUrl && !heroImg ? `<div class="cover"><img src="${esc(coverUrl)}" alt=""></div>` : ''}

@@ -388,3 +388,25 @@ body { overflow-x: clip; }
   .site-nav a { font-size: 13px; }
   .tag-row { margin-left: -16px; margin-right: -16px; padding: 10px 16px; }
 }
+
+/* ===== Trang dự án: khung gọn ở giữa, ảnh/video cùng chiều rộng và canh giữa ===== */
+.project main.wrap { max-width: calc(1120px + 2 * clamp(16px, 4vw, 40px)); }
+.project .page-head { text-align: center; }
+.project .page-head h1 { margin: 0 auto; max-width: 18ch; }
+.project .page-icon { margin-left: auto; margin-right: auto; }
+.project .meta { justify-content: center; text-align: center; }
+.project .content > * { margin-left: auto; margin-right: auto; }
+.project .content > p, .project .content > ul, .project .content > ol, .project .content > blockquote,
+.project .content > h2, .project .content > h3, .project .content > h4, .project .content > .callout,
+.project .content > details, .project .content > pre { max-width: 760px; }
+.project figure.media { max-width: 100%; margin-left: auto; margin-right: auto; text-align: center; }
+.project figure.media img, .project figure.media video { width: 100%; margin: 0 auto; }
+.project .ratio { margin-left: auto; margin-right: auto; }
+.project figcaption { text-align: center; }
+/* nhiều cột ảnh: các cột canh giữa theo chiều dọc, ảnh lấp đầy cột */
+.project .cols { align-items: center; }
+.project .cols .col { display: flex; flex-direction: column; gap: clamp(14px, 2.4vw, 28px); }
+.project .cols figure { margin: 0; }
+.project .callout-video, .project .link-card, .project .bookmark, .project .behance-embed { margin-left: auto; margin-right: auto; }
+.project .behance-embed .ratio { margin: 0 auto; }
+.project .pager { max-width: 1120px; margin: 0 auto; }
