@@ -328,3 +328,27 @@ body { overflow-x: clip; }
 /* About: dùng toàn bộ chiều ngang */
 .ab-body { max-width: 1040px; }
 .ab-intro .ab-body p, .ab-row:first-child .ab-body p { font-size: clamp(19px, 1.9vw, 30px); line-height: 1.38; }
+
+/* ===== About: chữ & khối to hơn, ít khoảng trống ===== */
+.page-about-me .page-head { padding-bottom: clamp(8px, 2vw, 24px); }
+.page-about-me .page-head h1 { font-size: clamp(56px, 11vw, 200px); line-height: .9; letter-spacing: -.045em; text-transform: uppercase; }
+.ab-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.75fr); gap: clamp(20px, 4vw, 72px); padding: clamp(36px, 4.5vw, 80px) 0; }
+.content .ab-label { font-size: clamp(30px, 4.2vw, 76px); line-height: .95; letter-spacing: -.035em; max-width: 8em; }
+.ab-body { max-width: none; }
+.ab-body p { font-size: clamp(18px, 1.55vw, 26px); line-height: 1.5; }
+.ab-intro .ab-body p, .ab-row:first-child .ab-body p { font-size: clamp(22px, 2.5vw, 44px); line-height: 1.25; letter-spacing: -.01em; }
+.num-row { grid-template-columns: minmax(120px, .7fr) 1fr; padding: clamp(18px, 2vw, 32px) 0; }
+.num { font-size: clamp(64px, 8vw, 150px); line-height: .9; }
+.num-txt { font-size: clamp(16px, 1.3vw, 22px); max-width: 36ch; }
+.ab-body .link-card { max-width: none; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+.ab-body .lc-title { font-size: clamp(20px, 2vw, 34px); line-height: 1.15; }
+.ab-body .lc-desc { font-size: clamp(14px, 1.1vw, 18px); }
+.ab-wide { margin: 0 0 clamp(16px, 3vw, 40px); }
+.ab-contact { padding-top: clamp(40px, 6vw, 90px); }
+.big-links a { font-size: clamp(40px, 8vw, 150px); line-height: .98; }
+.big-links a.long { font-size: clamp(24px, 5.6vw, 104px); }
+@media (max-width: 760px) {
+  .ab-row { grid-template-columns: 1fr; }
+  .big-links a { font-size: clamp(30px, 11vw, 56px); }
+  .big-links a.long { font-size: clamp(18px, 6.4vw, 32px); }
+}
