@@ -352,3 +352,19 @@ body { overflow-x: clip; }
   .big-links a { font-size: clamp(30px, 11vw, 56px); }
   .big-links a.long { font-size: clamp(18px, 6.4vw, 32px); }
 }
+
+/* ===== Hero trang chủ cân đối: chữ & ảnh cùng nằm gọn trong màn hình đầu, canh giữa theo chiều dọc ===== */
+.page-head.hero {
+  grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: clamp(28px, 4vw, 96px);
+  min-height: calc(100svh - 70px); padding: clamp(24px, 4vh, 56px) 0;
+}
+.hero-img { width: min(40vw, calc((100svh - 150px) * .8)); }
+.hero-img img { aspect-ratio: 4 / 5; height: auto; max-height: calc(100svh - 150px); }
+.hero-text { padding-bottom: 0; }
+.home .hero h1 { font-size: clamp(46px, 8.2vw, 190px); line-height: .88; }
+.home .hero .tagline { font-size: clamp(19px, 1.75vw, 38px); line-height: 1.25; max-width: 30ch; margin-top: clamp(20px, 3vh, 40px); }
+@media (max-width: 760px) {
+  .page-head.hero { grid-template-columns: 1fr; min-height: 0; }
+  .hero-img { width: min(100%, 420px); order: 2; }
+  .hero-text { order: 1; }
+}
