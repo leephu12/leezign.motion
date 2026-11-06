@@ -537,6 +537,7 @@ async function renderBlock(b, ctx) {
   const kids = async () => (b.children ? await renderBlocks(b.children, ctx) : '');
   switch (b.type) {
     case 'paragraph': {
+      if (isGlobe(b)) return globeHtml(b);
       const t = rt(d.rich_text, ctx);
       // Đoạn chỉ gồm một link kết thúc bằng "→" (VD: "View all Branding →") hiển thị như nút bấm
       const r = d.rich_text || [];
@@ -916,10 +917,22 @@ ${pager}
 </main>
 <footer class="foot">${esc(siteFooter || `© ${new Date().getFullYear()} ${rootNode.title}`)}</footer>
 <script src="${ctx.root}main.js?v=${BUILD_V}" defer></script>
+${content.includes('globe-scene') ? `<script src="${ctx.root}globe.js?v=${BUILD_V}" defer></script>` : ''}
 ${analytics}
 </body>
 </html>`;
   return (await gifsToVideo(html)).replaceAll('@@ROOT@@', ctx.root);
+}
+
+// Dòng "🌏 Based in …" → cảnh quả địa cầu cuộn (chữ số 0/1 → Việt Nam)
+const GLOBE_RE = /^🌏\s*/;
+const isGlobe = (b) => b.type === 'paragraph' && GLOBE_RE.test(plain(b.paragraph.rich_text).trim());
+function globeHtml(b) {
+  const text = plain(b.paragraph.rich_text).trim().replace(GLOBE_RE, '');
+  const m = text.match(/^(based in|located in|sống tại|ở)\s+(.*)$/i);
+  const kicker = m ? m[1] : '', place = m ? m[2] : text;
+  return `<section class="globe-scene" aria-label="${esc(text)}"><div class="globe-sticky"><canvas></canvas>`
+    + `<div class="globe-caption">${kicker ? `<p class="g-kicker">${esc(kicker)}</p>` : ''}<p class="g-place">${esc(place)}</p></div></div></section>`;
 }
 
 // ---------- Trang About: bố cục 2 cột (nhãn trái / nội dung phải), số liệu, khối liên hệ chữ lớn ----------
@@ -945,7 +958,7 @@ async function renderAbout(blocks, ctx) {
     const label = sec.head ? plain(sec.head[sec.head.type].rich_text).trim() : '';
     const headLinks = sec.head ? linksIn(sec.head[sec.head.type].rich_text) : [];
     // Ảnh / video lớn tách ra hiển thị tràn ngang sau hàng
-    const wide = sec.blocks.filter((b) => ['image', 'video'].includes(b.type) && !fbEmoji(fileUrl(b[b.type])));
+    const wide = sec.blocks.filter((b) => isGlobe(b) || ['image', 'video'].includes(b.type) && !fbEmoji(fileUrl(b[b.type])));
     const body = sec.blocks.filter((b) => !wide.includes(b) && !isBlank(b));
     if (label && CONTACT_RE.test(label)) {
       // Khối liên hệ: mọi link trong mục → dòng chữ lớn, nhãn nhỏ (MAIL / CALL / FOLLOW…)
@@ -978,7 +991,7 @@ async function renderAbout(blocks, ctx) {
     if (label || inner) {
       html += `<section class="ab-row${label ? '' : ' ab-intro'}"><h2 class="ab-label">${label ? esc(label) : ''}</h2><div class="ab-body">${inner}</div></section>`;
     }
-    for (const w of wide) html += `<div class="ab-wide">${await renderBlocks([w], ctx)}</div>`;
+    for (const w of wide) html += isGlobe(w) ? globeHtml(w) : `<div class="ab-wide">${await renderBlocks([w], ctx)}</div>`;
   }
   return html;
 }
@@ -1066,6 +1079,7 @@ if (convertedGifs.size) console.log(`  ↻ ${convertedGifs.size} GIF đã chuy�
 for (const name of usedMedia) await fs.copyFile(path.join(CACHE, name), path.join(OUT, 'media', name));
 await fs.copyFile(STYLE_SRC, path.join(OUT, 'style.css'));
 await fs.copyFile(SCRIPT_SRC, path.join(OUT, 'main.js'));
+await fs.copyFile(path.resolve('site/globe.js'), path.join(OUT, 'globe.js'));
 await fs.writeFile(path.join(OUT, '.nojekyll'), '');
 if (SITE_URL) {
   const today = new Date().toISOString().slice(0, 10);

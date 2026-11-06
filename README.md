@@ -108,3 +108,6 @@ npm run preview
 - **Sitemap:** `sitemap.xml` và `robots.txt` tự tạo mỗi lần build (theo `SITE_URL`, mặc định là địa chỉ GitHub Pages).
 - **Khu "Let's work together":** trong trang chủ Notion, tiêu đề có cụm *Let's work together* (hoặc *Get in touch*, *Let's talk*) + các dòng bên dưới sẽ thành khu liên hệ lớn; link `mailto:` thành nút đặc.
 - **Đếm lượt xem:** thêm 1 dòng cuối trang chủ Notion: `📊 Analytics: <mã>` — mã GoatCounter (VD `leezign`) hoặc token 32 ký tự của Cloudflare Web Analytics. Dòng này không hiện trên web.
+
+## Cảnh quả địa cầu (About me)
+Một dòng chữ bắt đầu bằng 🌏 trong Notion, ví dụ `🌏 Based in Ho Chi Minh City, Viet Nam`, sẽ thành cảnh ghim màn hình khi cuộn: quả địa cầu bằng chữ số 0/1 phóng to 2 nấc → xoay tới Việt Nam → bản đồ Việt Nam phóng to → chữ "VIỆT NAM", kèm dòng chữ phía sau 🌏 làm chú thích. Kéo dòng này lên/xuống trong Notion để đổi vị trí.

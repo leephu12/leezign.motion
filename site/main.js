@@ -49,7 +49,7 @@
     if (splitWords(el)) items.push({ el, kind: 'words', words: [...el.querySelectorAll('.w')], cur: -1 });
   });
   // 2) Khối trượt lên + rõ dần theo cuộn (lần lượt từng thẻ trong hàng); ảnh/video/hàng dự án phóng to khi tới giữa màn hình rồi thu lại khi cuộn qua
-  const blockSel = '.content > *:not(.gallery):not(.cta):not(.ab-contact), .gallery > h2, .grid .card, .ab-wide, .ab-row, .cover';
+  const blockSel = '.content > *:not(.gallery):not(.cta):not(.ab-contact):not(.globe-scene), .gallery > h2, .grid .card, .ab-wide, .ab-row, .cover';
   const scaleSel = '.cover, .ab-wide, .content > figure.media, .callout-video, .grid .row';
   const find = (el) => items.find((x) => x.el === el);
   document.querySelectorAll(blockSel).forEach((el) => {

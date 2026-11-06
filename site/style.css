@@ -7,7 +7,7 @@
   --muted: #8d8d94;
   --accent: #d4ff3f;           /* màu nhấn */
   --radius: 14px;
-  --maxw: 1760px;
+  --maxw: 9999px;
   --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
   --font-body: 'Be Vietnam Pro', system-ui, sans-serif;
   --thumb-ratio: 16 / 10;       /* tỉ lệ ảnh thumbnail project */
@@ -316,3 +316,15 @@ body { overflow-x: clip; }
 
 /* phần tử đang chạy hiệu ứng cuộn */
 .fx { will-change: transform, opacity; transform-origin: 50% 50%; }
+
+/* ===== Cảnh quả địa cầu 0/1 (dòng 🌏 trong Notion): ghim màn hình khi cuộn ===== */
+.globe-scene { position: relative; height: 560vh; width: var(--vw, 100vw); margin-left: calc(50% - var(--vw, 100vw) / 2); max-width: none !important; }
+.globe-sticky { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; }
+.globe-sticky canvas { display: block; width: 100%; height: 100%; }
+.globe-caption { position: absolute; left: 0; right: 0; bottom: clamp(32px, 8vh, 90px); text-align: center; opacity: 0; pointer-events: none; }
+.globe-caption .g-kicker { font: 600 12px/1 var(--font-body); letter-spacing: .16em; text-transform: uppercase; margin: 0 0 10px; color: var(--muted); }
+.globe-caption .g-place { font: 500 clamp(18px, 2vw, 28px)/1.2 var(--font-display); letter-spacing: -.01em; margin: 0; color: var(--text); }
+
+/* About: dùng toàn bộ chiều ngang */
+.ab-body { max-width: 1040px; }
+.ab-intro .ab-body p, .ab-row:first-child .ab-body p { font-size: clamp(19px, 1.9vw, 30px); line-height: 1.38; }
