@@ -816,7 +816,7 @@ async function renderPage(n, rootNode) {
     const imgIdx = blocks.findIndex((b, i) => b.type === 'image' && (firstCols < 0 || i < firstCols));
     if (imgIdx >= 0) { heroImg = await media(fileUrl(blocks[imgIdx].image)); blocks = blocks.filter((_, i) => i !== imgIdx); }
   }
-  let content = await renderBlocks(blocks, ctx);
+  let content = /^about/i.test(n.title.trim()) ? await renderAbout(blocks, ctx) : await renderBlocks(blocks, ctx);
 
   const props = Object.entries(n.page.properties || {})
     .filter(([k, p]) => p.type !== 'title' && !n.group?.hiddenProps.has(k) && !/colou?r$/i.test(k) && !/^(summary|description|mô tả|tóm tắt)$/i.test(k))
@@ -885,7 +885,7 @@ ${ogImg ? `<meta property="og:image" content="${esc(ogImg)}">\n<meta name="twitt
 ${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" href="${favicon}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="${ctx.root}style.css?v=${BUILD_V}">
 </head>
 <body class="${isHome ? 'home' : 'sub'} page-${n.slug}"${bodyStyle ? ` style="${bodyStyle}"` : ''}>
@@ -909,6 +909,67 @@ ${analytics}
 </body>
 </html>`;
   return (await gifsToVideo(html)).replaceAll('@@ROOT@@', ctx.root);
+}
+
+// ---------- Trang About: bố cục 2 cột (nhãn trái / nội dung phải), số liệu, khối liên hệ chữ lớn ----------
+const CONTACT_RE = /contact|social|get\s+in\s+touch|liên hệ/i;
+function linkTag(href) {
+  if (/^mailto:/i.test(href)) return 'Mail';
+  if (/^tel:/i.test(href)) return 'Call';
+  if (/linkedin\./i.test(href)) return 'Connect';
+  if (/behance\.|dribbble\.|vimeo\.|youtube\.|artstation\./i.test(href)) return 'Portfolio';
+  return 'Follow';
+}
+const waveText = (t) => `<span class="wave" aria-hidden="true">${[...t].map((c) => c === ' ' ? '<span class="sp"> </span>' : `<span>${esc(c)}</span>`).join('')}</span><span class="sr">${esc(t)}</span>`;
+async function renderAbout(blocks, ctx) {
+  // Gom khối theo tiêu đề (heading 1/2/3): mỗi tiêu đề = 1 hàng
+  const sections = []; let cur = { head: null, blocks: [] };
+  for (const b of blocks) {
+    if (/^heading_[123]$/.test(b.type) && plain(b[b.type].rich_text).trim()) { sections.push(cur); cur = { head: b, blocks: [] }; }
+    else cur.blocks.push(b);
+  }
+  sections.push(cur);
+  let html = '';
+  for (const sec of sections) {
+    const label = sec.head ? plain(sec.head[sec.head.type].rich_text).trim() : '';
+    const headLinks = sec.head ? linksIn(sec.head[sec.head.type].rich_text) : [];
+    // Ảnh / video lớn tách ra hiển thị tràn ngang sau hàng
+    const wide = sec.blocks.filter((b) => ['image', 'video'].includes(b.type) && !fbEmoji(fileUrl(b[b.type])));
+    const body = sec.blocks.filter((b) => !wide.includes(b) && !isBlank(b));
+    if (label && CONTACT_RE.test(label)) {
+      // Khối liên hệ: mọi link trong mục → dòng chữ lớn, nhãn nhỏ (MAIL / CALL / FOLLOW…)
+      const links = [];
+      const collect = (arr) => (arr || []).forEach((b) => {
+        const r = b[b.type]?.rich_text;
+        if (r) r.forEach((x) => { if (x.href && x.plain_text.trim()) links.push({ href: mapHref(x.href, ctx), text: x.plain_text.trim() }); });
+        collect(b.children);
+      });
+      collect(body);
+      const rows = links.map((l) => `<li><a${l.text.length > 13 ? ' class="long"' : ''} href="${esc(l.href)}"${/^https?:/.test(l.href) ? ' target="_blank" rel="noopener"' : ''}>${waveText(l.text.toUpperCase())}<sup>${linkTag(l.href)}</sup></a></li>`).join('');
+      html += `<section class="ab-contact"><p class="ab-kicker">${esc(label)}</p><ul class="big-links">${rows}</ul></section>`;
+      continue;
+    }
+    let inner = '';
+    if (headLinks.length === 1) inner += await linkCard(cleanUrl(headLinks[0]), '');
+    // Dòng bắt đầu bằng số in đậm (VD: **10+** Years of experience) → hàng số liệu
+    let run = [];
+    for (const b of body) {
+      const r = b.type === 'paragraph' ? b.paragraph.rich_text || [] : null;
+      const first = r && r.find((x) => x.plain_text.trim());
+      if (first && first.annotations?.bold && /^[\d.,]+\s*[+%kKmM]*$/.test(first.plain_text.trim())) {
+        if (run.length) { inner += await renderBlocks(run, ctx); run = []; }
+        const rest = r.slice(r.indexOf(first) + 1);
+        const restHtml = rt(rest, ctx).replace(/^\s*[—–:-]\s*/, '');
+        inner += `<div class="num-row"><span class="num">${esc(first.plain_text.trim())}</span><span class="num-txt">${restHtml}</span></div>`;
+      } else run.push(b);
+    }
+    if (run.length) inner += await renderBlocks(run, ctx);
+    if (label || inner) {
+      html += `<section class="ab-row${label ? '' : ' ab-intro'}"><h2 class="ab-label">${label ? esc(label) : ''}</h2><div class="ab-body">${inner}</div></section>`;
+    }
+    for (const w of wide) html += `<div class="ab-wide">${await renderBlocks([w], ctx)}</div>`;
+  }
+  return html;
 }
 
 // ---------- GIF → video MP4 (nhẹ hơn ~5–10 lần, vẫn tự chạy + lặp như GIF) ----------

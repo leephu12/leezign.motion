@@ -21,12 +21,12 @@
 // Hiệu ứng trượt lên + hiện dần khi cuộn tới (phần đã thấy lúc mở trang thì giữ nguyên, không nháy)
 (() => {
   if (!('IntersectionObserver' in window)) return;
-  const sel = '.content > *:not(.gallery), .gallery > h2, .grid .card, .pager, .foot';
+  const sel = '.content > *:not(.gallery):not(.ab-contact), .gallery > h2, .grid .card';
   const items = [...document.querySelectorAll(sel)];
   const vh = innerHeight;
   const io = new IntersectionObserver((entries) => {
     for (const e of entries) if (e.isIntersecting) { e.target.classList.add('rv-in'); io.unobserve(e.target); }
-  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+  }, { rootMargin: '0px', threshold: 0 });
   items.forEach((el) => {
     if (el.getBoundingClientRect().top < vh * 0.92) return; // đang trong màn hình
     const grid = el.closest('.grid');
@@ -62,4 +62,24 @@
     v.addEventListener('focus', show);
     v.addEventListener('touchstart', show, { passive: true });
   });
+})();
+
+// Chữ liên hệ lớn (About): chữ gần con trỏ đậm dần lên như sóng
+(() => {
+  const lists = document.querySelectorAll('.big-links');
+  if (!lists.length) return;
+  const chars = [...document.querySelectorAll('.big-links .wave span:not(.sp)')];
+  const MIN = 300, MAX = 800, R = 140;
+  let raf = 0, mx = -1e4, my = -1e4;
+  const paint = () => {
+    raf = 0;
+    for (const c of chars) {
+      const r = c.getBoundingClientRect();
+      const d = Math.hypot(r.left + r.width / 2 - mx, r.top + r.height / 2 - my);
+      const w = Math.round(MIN + (MAX - MIN) * Math.max(0, 1 - d / R));
+      c.style.fontVariationSettings = `'wght' ${w}`;
+    }
+  };
+  addEventListener('mousemove', (e) => { mx = e.clientX; my = e.clientY; if (!raf) raf = requestAnimationFrame(paint); }, { passive: true });
+  document.addEventListener('mouseleave', () => { mx = my = -1e4; if (!raf) raf = requestAnimationFrame(paint); });
 })();

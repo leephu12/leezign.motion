@@ -172,12 +172,6 @@ a.chip { text-decoration: none; transition: border-color .2s, color .2s; }
 a.chip:hover { border-color: var(--accent); color: var(--accent); }
 
 /* About me: canh giữa toàn bộ khung mô tả */
-.page-about-me .page-head, .page-about-me .content { text-align: center; }
-.page-about-me .page-head h1 { margin: 0 auto; }
-.page-about-me .content > * { margin-left: auto; margin-right: auto; }
-.page-about-me .content > p, .page-about-me .content > h2, .page-about-me .content > h3 { max-width: 760px; }
-.page-about-me .content figure.media { max-width: 900px; }
-.page-about-me .content h2 { margin-top: 1.8em; }
 
 /* ---- Motion: chữ trượt nhẹ khi hover ---- */
 .roll { display: inline-block; position: relative; overflow: hidden; vertical-align: bottom; line-height: 1.25; height: 1.25em; }
@@ -253,3 +247,41 @@ a.img-link:hover img { opacity: .92; }
 .cta .btn[href^="mailto:"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
 .cta .btn[href^="mailto:"]:hover { background: transparent; color: var(--accent); }
 .cta .btn { padding: 14px 28px; font-size: 16px; }
+
+/* ===== Trang About: bố cục 2 cột như editorial (nhãn trái, nội dung phải) ===== */
+.page-about-me .content { padding-bottom: 24px; }
+.ab-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: clamp(20px, 5vw, 80px); padding: clamp(40px, 6vw, 84px) 0; }
+.ab-row + .ab-row { border-top: 1px solid var(--line); }
+.content .ab-label { font: 600 clamp(24px, 2.6vw, 38px)/1.02 var(--font-display); letter-spacing: -.02em; text-transform: uppercase; margin: 0; max-width: 9em; }
+.ab-body { max-width: 680px; }
+.ab-body > p:first-child { margin-top: 0; }
+.ab-body p { font-size: clamp(16px, 1.25vw, 19px); line-height: 1.6; }
+.ab-intro .ab-body p { font-size: clamp(18px, 1.6vw, 24px); line-height: 1.45; }
+.ab-intro { padding-top: 8px; }
+.ab-body .link-card { margin: 0; }
+.ab-wide { margin: 0 0 clamp(24px, 4vw, 48px); }
+.ab-wide figure.media { margin: 0; }
+/* số liệu */
+.num-row { display: grid; grid-template-columns: minmax(90px, 160px) 1fr; gap: 24px; align-items: baseline; padding: 22px 0; border-top: 1px solid var(--line); }
+.num-row:last-child { border-bottom: 1px solid var(--line); }
+.num { font: 300 clamp(40px, 5vw, 72px)/1 var(--font-display); letter-spacing: -.03em; }
+.num-txt { font-size: 15px; color: var(--muted); max-width: 40ch; }
+/* liên hệ chữ lớn */
+.ab-contact { padding: clamp(48px, 8vw, 110px) 0 clamp(24px, 4vw, 48px); border-top: 1px solid var(--line); }
+.ab-kicker { font: 600 12px/1 var(--font-body); letter-spacing: .14em; text-transform: uppercase; margin: 0 0 clamp(20px, 3vw, 36px) !important; }
+.big-links { list-style: none; margin: 0; padding: 0; }
+.big-links li { margin: 0; }
+.big-links a { display: inline-flex; align-items: flex-start; gap: 6px; text-decoration: none; color: var(--text);
+  font: 300 clamp(34px, 6.4vw, 92px)/1.02 var(--font-display); letter-spacing: -.035em; }
+.big-links a:hover { color: var(--accent); }
+.big-links sup { font: 600 10px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: .9em; }
+.wave span { display: inline-block; transition: font-variation-settings .25s ease, font-weight .25s ease; font-variation-settings: 'wght' 300; }
+.wave .sp { width: .25em; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 760px) {
+  .ab-row { grid-template-columns: 1fr; gap: 14px; }
+  .big-links a { font-size: clamp(26px, 8.6vw, 40px); }
+}
+.big-links .wave { white-space: nowrap; }
+.big-links a.long { font-size: clamp(22px, 4.6vw, 66px); }
+@media (max-width: 760px) { .big-links a.long { font-size: clamp(18px, 6vw, 30px); } }
