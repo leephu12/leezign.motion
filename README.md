@@ -111,3 +111,10 @@ npm run preview
 
 ## Cảnh quả địa cầu (About me)
 Một dòng chữ bắt đầu bằng 🌏 trong Notion, ví dụ `🌏 Based in Ho Chi Minh City, Viet Nam`, sẽ thành cảnh ghim màn hình khi cuộn: quả địa cầu bằng chữ số 0/1 phóng to 2 nấc → xoay tới Việt Nam → bản đồ Việt Nam phóng to → chữ "VIỆT NAM", kèm dòng chữ phía sau 🌏 làm chú thích. Kéo dòng này lên/xuống trong Notion để đổi vị trí.
+
+## Câu tuyên ngôn pixel (About me)
+Trong mục có tiêu đề (VD "Hello 👋"), một khối **Quote** sẽ thành câu chữ cỡ lớn:
+- Chữ đặt trong `code` (Ctrl+E trong Notion) → hiện bằng font pixel.
+- Emoji → biểu tượng pixel: ❤ tim · 🙂 mặt cười · ● pac-man · ✦ ngôi sao · ▶ nút phát · ▬ thanh khối đặc (nhiều ▬ = thanh dài hơn).
+- Các dòng gạch đầu dòng dạng `Nhãn: nội dung` bên dưới thành các chú thích nhỏ có vạch dọc.
+- Các đoạn văn còn lại của mục hiện bằng chữ mono ở cột phải.

@@ -410,3 +410,28 @@ body { overflow-x: clip; }
 .project .callout-video, .project .link-card, .project .bookmark, .project .behance-embed { margin-left: auto; margin-right: auto; }
 .project .behance-embed .ratio { margin: 0 auto; }
 .project .pager { max-width: 1120px; margin: 0 auto; }
+
+/* ===== About: mở đầu editorial (đường kẻ mảnh, chữ mono, câu tuyên ngôn lớn trộn chữ & biểu tượng pixel) ===== */
+.page-about-me .page-head { padding: clamp(28px, 5vh, 64px) 0 clamp(18px, 3vh, 32px); border-bottom: 1px solid var(--line); }
+.page-about-me .page-head h1 { font: 400 clamp(40px, 5.2vw, 104px)/1 var(--font-display); letter-spacing: -.03em; text-transform: none; }
+.page-about-me .page-head::before { content: ''; display: block; border-top: 1px solid var(--line); margin-bottom: clamp(18px, 3vh, 32px); }
+.ab-hero { padding: clamp(24px, 4vh, 44px) 0 clamp(48px, 9vh, 120px); }
+.ab-hero-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 4vw, 72px); }
+.mono-k, .mono-bio, .mono-bio p, .spec { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; }
+.mono-k { font-size: clamp(13px, 1vw, 17px); letter-spacing: .04em; text-transform: uppercase; margin: 0; }
+.content .mono-bio p { font-size: clamp(13px, 1vw, 17px); line-height: 1.55; margin: 0 0 .9em; max-width: 62ch; }
+.statement {
+  font: 400 clamp(46px, 7.6vw, 168px)/1.02 var(--font-display); letter-spacing: -.035em;
+  margin: clamp(56px, 12vh, 160px) 0 clamp(28px, 5vh, 56px) !important; max-width: none !important; color: var(--text);
+}
+.statement strong { font-weight: 600; }
+.statement .px { font-family: 'Pixelify Sans', var(--font-display); font-weight: 500; letter-spacing: 0; }
+.statement .pxi { display: inline-block; height: .62em; width: auto; vertical-align: -.02em; margin: 0 .08em; fill: currentColor; }
+.statement .pxbar { display: inline-block; width: calc(var(--len, 1) * 1.6em); height: .7em; background: currentColor; vertical-align: -.02em; margin: 0 .12em; }
+.specs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: clamp(16px, 3vw, 48px); }
+.spec { display: flex; flex-direction: column; gap: 6px; padding-left: 14px; border-left: 1px solid var(--accent); font-size: clamp(12px, .95vw, 15px); line-height: 1.4; }
+.spec-k { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: .85em; }
+@media (max-width: 760px) {
+  .ab-hero-top { grid-template-columns: 1fr; }
+  .statement { font-size: clamp(38px, 12vw, 64px); }
+}

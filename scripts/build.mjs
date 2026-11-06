@@ -897,7 +897,7 @@ ${ogImg ? `<meta property="og:image" content="${esc(ogImg)}">\n<meta name="twitt
 ${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" href="${favicon}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="${ctx.root}style.css?v=${BUILD_V}">
 </head>
 <body class="${isHome ? 'home' : 'sub'}${n.page.parent?.data_source_id || n.page.parent?.database_id ? ' project' : ''} page-${n.slug}"${bodyStyle ? ` style="${bodyStyle}"` : ''}>
@@ -933,6 +933,31 @@ function globeHtml(b) {
   const kicker = m ? m[1] : '', place = m ? m[2] : text;
   return `<section class="globe-scene" aria-label="${esc(text)}"><div class="globe-sticky"><canvas></canvas>`
     + `<div class="globe-caption">${kicker ? `<p class="g-kicker">${esc(kicker)}</p>` : ''}<p class="g-place">${esc(place)}</p></div></div></section>`;
+}
+
+// ---------- Câu tuyên ngôn lớn kiểu "pixel": chữ trong `code` → font pixel, emoji → biểu tượng pixel ----------
+const PX = {
+  heart: ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'],
+  smile: ['..XXXXX..', '.XXXXXXX.', 'XX.XXX.XX', 'XX.XXX.XX', 'XXXXXXXXX', 'X.XXXXX.X', 'XX.....XX', '.XXXXXXX.', '..XXXXX..'],
+  pac: ['..XXXXX..', '.XXXXXXX.', 'XXX.XXXX.', 'XXXXXX...', 'XXXXX....', 'XXXXXX...', 'XXXXXXXX.', '.XXXXXXX.', '..XXXXX..'],
+  star: ['...X...', '...X...', '..XXX..', 'XXXXXXX', '..XXX..', '...X...', '...X...'],
+  play: ['X.....', 'XXX...', 'XXXXX.', 'XXXXXX', 'XXXXX.', 'XXX...', 'X.....'],
+};
+const pxSvg = (name) => {
+  const rows = PX[name], w = rows[0].length, h = rows.length;
+  let d = '';
+  rows.forEach((r, y) => [...r].forEach((c, x) => { if (c === 'X') d += `M${x} ${y}h1v1h-1z`; }));
+  return `<svg class="pxi pxi-${name}" viewBox="0 0 ${w} ${h}" aria-hidden="true" shape-rendering="crispEdges"><path d="${d}"/></svg>`;
+};
+const PX_EMOJI = [[/❤️|❤|♥️|♥|🧡/g, 'heart'], [/🙂|😊|☺️|☺|😀/g, 'smile'], [/●|🟠|👾/g, 'pac'], [/✦|✨|★|⭐/g, 'star'], [/▶️|▶|🎬/g, 'play']];
+function pixelText(rich) {
+  return (rich || []).map((x) => {
+    if (x.annotations?.code) return `<span class="px">${esc(x.plain_text)}</span>`;
+    let t = esc(x.plain_text);
+    t = t.replace(/[▬█]+/g, (m) => `<span class="pxbar" style="--len:${m.length}"></span>`);
+    for (const [re, name] of PX_EMOJI) t = t.replace(re, () => pxSvg(name));
+    return x.annotations?.bold ? `<strong>${t}</strong>` : t;
+  }).join('');
 }
 
 // ---------- Trang About: bố cục 2 cột (nhãn trái / nội dung phải), số liệu, khối liên hệ chữ lớn ----------
@@ -971,6 +996,20 @@ async function renderAbout(blocks, ctx) {
       collect(body);
       const rows = links.map((l) => `<li><a${l.text.length > 13 ? ' class="long"' : ''} href="${esc(l.href)}"${/^https?:/.test(l.href) ? ' target="_blank" rel="noopener"' : ''}>${waveText(l.text.toUpperCase())}<sup>${linkTag(l.href)}</sup></a></li>`).join('');
       html += `<section class="ab-contact"><p class="ab-kicker">${esc(label)}</p><ul class="big-links">${rows}</ul></section>`;
+      continue;
+    }
+    const quote = body.find((b) => b.type === 'quote');
+    if (quote) {
+      // Mở đầu kiểu editorial: nhãn mono + mô tả mono → câu tuyên ngôn cỡ lớn (chữ & biểu tượng pixel) → chú thích
+      const specs = body.filter((b) => b.type === 'bulleted_list_item' || b.type === 'numbered_list_item');
+      const bio = body.filter((b) => b !== quote && !specs.includes(b));
+      const specHtml = specs.map((b) => {
+        const t = plain(b[b.type].rich_text); const m = t.match(/^([^:—–]+)[:—–]\s*(.+)$/);
+        return `<div class="spec"><span class="spec-k">${esc(m ? m[1].trim() : '')}</span><span class="spec-v">${esc(m ? m[2].trim() : t)}</span></div>`;
+      }).join('');
+      html += `<section class="ab-hero"><div class="ab-hero-top"><p class="mono-k">${esc(label)}</p><div class="mono-bio">${await renderBlocks(bio, ctx)}</div></div>`
+        + `<p class="statement">${pixelText(quote.quote.rich_text)}</p>${specHtml ? `<div class="specs">${specHtml}</div>` : ''}</section>`;
+      for (const w of wide) html += isGlobe(w) ? globeHtml(w) : `<div class="ab-wide">${await renderBlocks([w], ctx)}</div>`;
       continue;
     }
     let inner = '';
