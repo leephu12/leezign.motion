@@ -50,3 +50,16 @@
     if (v.error) fail();
   });
 })();
+
+// Video trong bài chạy như GIF (không thanh điều khiển). Rê chuột / chạm vào mới hiện thanh điều khiển để bật tiếng, tua…
+(() => {
+  document.querySelectorAll('.content video[controls]').forEach((v) => {
+    v.controls = false;
+    const show = () => { v.controls = true; };
+    const hide = () => { if (!v.dataset.userPlayed && v.muted) v.controls = false; };
+    v.addEventListener('mouseenter', show);
+    v.addEventListener('mouseleave', hide);
+    v.addEventListener('focus', show);
+    v.addEventListener('touchstart', show, { passive: true });
+  });
+})();

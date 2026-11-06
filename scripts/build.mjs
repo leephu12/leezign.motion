@@ -6,6 +6,7 @@ import fs from 'node:fs/promises';
 import fss from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { execFile } from 'node:child_process';
 
 const OUT = path.resolve('dist');
 const CACHE = path.resolve('.cache/media');
@@ -700,6 +701,8 @@ function findFirstMedia(blocks) {
   for (const b of blocks || []) {
     if (b.type === 'image' && fbEmoji(fileUrl(b.image))) continue;
     if (b.type === 'image' || b.type === 'video') return { kind: b.type, url: fileUrl(b[b.type]), external: b[b.type].type === 'external' };
+    if ((b.type === 'link_preview' || b.type === 'bookmark') && isVideoFile(b[b.type].url || ''))
+      return { kind: 'video', url: b[b.type].url, external: true };
     if (b.type === 'embed' && b.embed.url && (isImageFile(b.embed.url) || isVideoFile(b.embed.url)))
       return { kind: isVideoFile(b.embed.url) ? 'video' : 'image', url: b.embed.url, external: true };
     const inner = findFirstMedia(b.children); if (inner) return inner;
@@ -905,7 +908,60 @@ ${pager}
 ${analytics}
 </body>
 </html>`;
-  return html.replaceAll('@@ROOT@@', ctx.root);
+  return (await gifsToVideo(html)).replaceAll('@@ROOT@@', ctx.root);
+}
+
+// ---------- GIF → video MP4 (nhẹ hơn ~5–10 lần, vẫn tự chạy + lặp như GIF) ----------
+const run = (cmd, args) => new Promise((ok, no) => execFile(cmd, args, { maxBuffer: 1 << 24 }, (e, so, se) => (e ? no(new Error(se || e.message)) : ok(so))));
+let hasFfmpeg = null;
+const gifJobs = new Map(); // tên gif → Promise<{ mp4, jpg } | null>
+function gifHasAlpha(buf) {
+  // Khung đầu tiên có bật nền trong suốt (Graphic Control Extension) → giữ GIF để không mất nền trong suốt
+  for (let i = 13; i < Math.min(buf.length - 4, 1 << 20); i++) {
+    if (buf[i] === 0x21 && buf[i + 1] === 0xf9 && buf[i + 2] === 0x04) return (buf[i + 3] & 1) === 1;
+    if (buf[i] === 0x2c) break; // tới khung ảnh đầu tiên mà không có GCE
+  }
+  return false;
+}
+function convertGif(name) {
+  if (!gifJobs.has(name)) gifJobs.set(name, (async () => {
+    if (hasFfmpeg === null) hasFfmpeg = await run('ffmpeg', ['-version']).then(() => true, () => false);
+    if (!hasFfmpeg) return null;
+    const src = path.join(CACHE, name), base = name.replace(/\.gif$/i, '');
+    const mp4 = base + '.mp4', jpg = base + '.jpg';
+    try {
+      if (!fss.existsSync(path.join(CACHE, mp4))) {
+        const buf = await fs.readFile(src);
+        if (gifHasAlpha(buf)) return null;
+        await run('ffmpeg', ['-y', '-v', 'error', '-i', src, '-movflags', '+faststart', '-pix_fmt', 'yuv420p',
+          '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-an', path.join(CACHE, mp4)]);
+        await run('ffmpeg', ['-y', '-v', 'error', '-i', src, '-frames:v', '1', '-q:v', '3', path.join(CACHE, jpg)]);
+        // video lớn hơn GIF thì giữ GIF
+        if ((await fs.stat(path.join(CACHE, mp4))).size >= buf.length) { await fs.writeFile(path.join(CACHE, mp4 + '.skip'), ''); }
+      }
+      if (fss.existsSync(path.join(CACHE, mp4 + '.skip')) || !fss.existsSync(path.join(CACHE, jpg))) return null;
+      return { mp4, jpg };
+    } catch (e) { console.warn('  ! không chuyển được GIF ' + name + ': ' + e.message.slice(0, 200)); return null; }
+  })());
+  return gifJobs.get(name);
+}
+const convertedGifs = new Map(); // gif → { mp4, jpg } (để chép file + bỏ GIF khỏi website)
+async function gifsToVideo(html) {
+  const names = [...new Set([...html.matchAll(/@@ROOT@@media\/([\w-]+\.gif)/gi)].map((m) => m[1]))];
+  for (const name of names) {
+    const r = await convertGif(name);
+    if (!r) continue;
+    convertedGifs.set(name, r);
+    const url = '@@ROOT@@media/' + name;
+    // <img src="….gif"> → <video> tự chạy, lặp, không tiếng (giống GIF), ảnh khung đầu làm hình chờ
+    html = html.replace(new RegExp(`<img([^>]*?)\\ssrc="${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"([^>]*)>`, 'g'), (m, a, b) => {
+      const attrs = (a + b).replace(/\s(loading|onerror|referrerpolicy|alt)="[^"]*"/g, '');
+      return `<video${attrs} class="gifv" src="@@ROOT@@media/${r.mp4}" poster="@@ROOT@@media/${r.jpg}" muted loop playsinline autoplay preload="metadata"></video>`;
+    });
+    // ảnh xem trước khi share (og:image) → ảnh JPG khung đầu
+    html = html.replaceAll(`media/${name}"`, `media/${r.jpg}"`);
+  }
+  return html;
 }
 
 // ---------- chạy ----------
@@ -933,6 +989,8 @@ for (const n of ordered) {
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, 'index.html'), html);
 }
+for (const [gif, r] of convertedGifs) { usedMedia.delete(gif); usedMedia.add(r.mp4); usedMedia.add(r.jpg); }
+if (convertedGifs.size) console.log(`  ↻ ${convertedGifs.size} GIF đã chuyển sang video MP4`);
 for (const name of usedMedia) await fs.copyFile(path.join(CACHE, name), path.join(OUT, 'media', name));
 await fs.copyFile(STYLE_SRC, path.join(OUT, 'style.css'));
 await fs.copyFile(SCRIPT_SRC, path.join(OUT, 'main.js'));
