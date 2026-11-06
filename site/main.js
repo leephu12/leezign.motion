@@ -73,7 +73,8 @@
     const row = el.matches('.grid .card') ? el.parentElement : null;
     items.push({ el, kind: 'block', cur: 0, delay: row ? [...row.children].indexOf(el) : 0 });
   });
-  document.querySelectorAll(scaleSel).forEach((el) => {
+  // trang dự án: không phóng to/thu nhỏ để ảnh/video luôn cùng kích thước
+  if (!document.body.classList.contains('project')) document.querySelectorAll(scaleSel).forEach((el) => {
     const it = find(el);
     if (it) it.scale = true; else items.push({ el, kind: 'scale', cur: 1, scale: true });
   });
