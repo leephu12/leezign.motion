@@ -86,6 +86,7 @@ const fileUrl = (f) => !f ? '' : f.type === 'external' ? f.external?.url : f.fil
 const pages = new Map(); // id → node
 const slugs = new Set(['index', 'media']);
 let siteOgImage = '';     // ảnh xem trước mặc định (ảnh hero trang chủ)
+let siteStatus = '';      // dòng trạng thái giữa thanh menu (từ dòng 📣 trong Notion)
 let analyticsId = '';     // mã thống kê lượt xem (từ dòng 📊 Analytics trong Notion)
 const siteNav = [];      // các trang trong thanh menu (lấy từ synced block ở trang chủ)
 let siteFooter = '';
@@ -120,6 +121,11 @@ const HEX_RE = /#(?:[0-9a-f]{3}|[0-9a-f]{6})\b/gi;
 function takeTheme(blocks) {
   let theme = null;
   const out = blocks.filter((b) => {
+    if (b.type === 'paragraph' && /^📣/.test(textOf(b).trim())) {
+      // Dòng "📣 Available for freelance & directing" → hiện giữa thanh menu
+      siteStatus = textOf(b).trim().replace(/^📣\s*/, '');
+      return false;
+    }
     if (b.type === 'paragraph' && /^📊\s*analytics\s*:/i.test(textOf(b))) {
       // Dòng "📊 Analytics: <mã GoatCounter hoặc token Cloudflare>" → gắn công cụ đếm lượt xem
       analyticsId = textOf(b).replace(/^📊\s*analytics\s*:\s*/i, '').trim();
@@ -817,7 +823,7 @@ async function renderPage(n, rootNode) {
   let tagline = '', taglineText = '';
   const firstIdx = blocks.findIndex((b) => !isBlank(b));
   if (n.slug === 'index' && /^heading_/.test(blocks[firstIdx]?.type || '')) {
-    tagline = `<h3 class="tagline">${rt(blocks[firstIdx][blocks[firstIdx].type].rich_text, ctx)}</h3>`;
+    tagline = `<h3 class="tagline">${n.slug === 'index' ? await richTagline(plain(blocks[firstIdx][blocks[firstIdx].type].rich_text), ctx) || rt(blocks[firstIdx][blocks[firstIdx].type].rich_text, ctx) : rt(blocks[firstIdx][blocks[firstIdx].type].rich_text, ctx)}</h3>`;
     taglineText = plain(blocks[firstIdx][blocks[firstIdx].type].rich_text).trim();
     blocks = blocks.filter((_, i) => i !== firstIdx);
   }
@@ -897,18 +903,18 @@ ${ogImg ? `<meta property="og:image" content="${esc(ogImg)}">\n<meta name="twitt
 ${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" href="${favicon}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Pixelify+Sans:wght@500;700&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="${ctx.root}style.css?v=${BUILD_V}">
 </head>
 <body class="${isHome ? 'home' : 'sub'}${n.page.parent?.data_source_id || n.page.parent?.database_id ? ' project' : ''} page-${n.slug}"${bodyStyle ? ` style="${bodyStyle}"` : ''}>
-<header class="topbar"><a class="brand" href="${ctx.root}index.html" aria-label="${esc(brandText)} — Home">${logo ? `<img class="logo" src="${esc(logo)}" alt="">` : rootIcon ? `<span>${rootIcon}</span>` : ''}<span>${esc(brandText)}</span></a><nav class="site-nav">${navLinks}</nav></header>
+<header class="topbar"><a class="brand" href="${ctx.root}index.html" aria-label="${esc(brandText)} — Home">${logo ? `<img class="logo" src="${esc(logo)}" alt="">` : rootIcon ? `<span>${rootIcon}</span>` : ''}<span>${esc(brandText)}</span></a>${siteStatus ? `<p class="status">${pxSvg('heart')}<span>${esc(siteStatus)}</span></p>` : ''}<nav class="site-nav">${navLinks}</nav></header>
 <main class="wrap">
 ${coverUrl && !heroImg ? `<div class="cover"><img src="${esc(coverUrl)}" alt=""></div>` : ''}
 <div class="page-head${heroImg ? ' hero' : ''}">
-${heroImg ? `<figure class="hero-img"><img src="${esc(heroImg)}" alt="${esc(n.title)}"><span class="hx-badge">${pxSvg('heart')}</span><span class="hx-tri" aria-hidden="true"></span><figcaption class="hx-cap"><span>${esc(brandText)}</span><span class="hx-dash"></span><span>© ${new Date().getFullYear()}</span></figcaption></figure><div class="hero-text"><div class="hx-row hx-top">${pxSvg('hand')}<span>Hello</span><span class="hx-dash"></span><span class="hx-sq"></span><span class="hx-sq o"></span><span class="hx-tri-s"></span></div>` : ''}
+${heroImg ? `<figure class="hero-img"><img src="${esc(heroImg)}" alt="${esc(n.title)}"><span class="hx-badge">${pxSvg('heart')}</span><span class="hx-tri" aria-hidden="true"></span><figcaption class="hx-cap"><span class="hx-sq o"></span><span>Portrait</span><span class="hx-dash"></span><span class="hx-tri-s"></span><span>Ho Chi Minh City</span></figcaption></figure><div class="hero-text"><div class="hx-row hx-top"><span class="hx-pill">${esc(brandText)} / Portfolio</span><span class="hx-arrow">→</span><span>Hello</span>${pxSvg('hand')}<span class="hx-dash"></span><span class="hx-br">[ ${new Date().getFullYear()} Edit ]</span></div>${siteStatus ? `<p class="hx-status">${pxSvg('heart')}<span>${esc(siteStatus)}</span></p>` : ''}` : ''}
 ${iconImg && !isHome ? `<img class="page-icon" src="${esc(iconImg)}" alt="">` : icon && !isHome ? `<div class="page-icon">${icon}</div>` : ''}
 ${heroImg ? `<h1 class="fit">${n.title.split(/\s+\/\s+/).map((l, i, a) => `<span class="ln">${esc(l)}${i < a.length - 1 ? ' /' : ''}</span>`).join('')}</h1>` : `<h1>${esc(n.title)}</h1>`}
-${heroImg && tagline ? `<div class="hx-desc">${pxSvg('arrowdr')}${tagline}</div><div class="hx-row hx-bottom"><span class="hx-sq o"></span><span>Scroll to explore</span><span class="hx-dash long"></span>${pxSvg('heart')}</div>` : tagline}
+${heroImg && tagline ? `<div class="hx-desc">${pxSvg('arrowdr')}${tagline}</div><div class="hx-row hx-bottom"><span>${esc(brandText)}</span><span class="hx-dash"></span><span class="hx-arrow">→</span><span>Scroll to explore</span><span class="hx-dash long"></span><span class="hx-c">© ${new Date().getFullYear()}</span></div>` : tagline}
 ${meta}
 ${heroImg ? '</div>' : ''}
 </div>
@@ -962,6 +968,33 @@ function pixelText(rich) {
     for (const [re, name] of PX_EMOJI) t = t.replace(re, () => pxSvg(name));
     return x.annotations?.bold ? `<strong>${t}</strong>` : t;
   }).join('');
+}
+
+// Dòng giới thiệu trang chủ: "I'm X — a … exploring A, B, C, and D." → tên gạch chân, chèn ô ảnh dự án nhỏ, tô màu từ khoá
+const APERTURE = '<svg class="tg-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M14.3 2.3 8.6 12.2M20.8 7.6H9.4M20.4 16.4l-5.7-9.9M9.7 21.7l5.7-9.9M3.2 16.4h11.4M3.6 7.6l5.7 9.9"/></svg>';
+async function richTagline(text, ctx) {
+  const m = text.match(/^(I[’']m)\s+(\S+)\s+([—–-])\s+(.*?\bexploring)\s+(.+?)\.?$/i);
+  if (!m) return '';
+  const items = m[5].split(/\s*,\s*(?:and\s+)?|\s+and\s+/i).map((x) => x.trim()).filter(Boolean);
+  if (items.length < 2) return '';
+  // ảnh nhỏ lấy từ thumbnail các dự án (GIF sẽ tự thành video chạy trong ô)
+  const pills = [];
+  for (const x of pages.values()) {
+    if (pills.length >= 2) break;
+    if (!(x.page.parent?.data_source_id || x.page.parent?.database_id)) continue;
+    const t = thumbSource(x);
+    if (t?.url && t.kind === 'image' && !fbEmoji(t.url)) pills.push(await media(t.url));
+  }
+  const pill = (i) => (pills[i] ? `<span class="tg-pill"><img src="${esc(pills[i])}" alt=""></span>` : '<span class="tg-pill tg-grad"></span>');
+  const n = items.length;
+  const parts = items.map((it, i) => {
+    const t = esc(it);
+    if (i === 0) return `${pill(0)} <span class="tg-hl">${t}</span>`;
+    if (i === n - 1) return `<span class="tg-and">and</span> <strong class="tg-strong">${t}</strong>.${APERTURE}`;
+    if (i === n - 2) return `${pill(1)} ${t}`;
+    return `<span class="tg-arrow">→</span> ${t}`;
+  });
+  return `${esc(m[1])} <span class="tg-name">${esc(m[2])}</span> ${m[3]} ${esc(m[4])} ${parts.slice(0, -1).join(', ')}, ${parts[n - 1]}`;
 }
 
 // ---------- Trang About: bố cục 2 cột (nhãn trái / nội dung phải), số liệu, khối liên hệ chữ lớn ----------

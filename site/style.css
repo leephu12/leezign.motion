@@ -474,3 +474,43 @@ body { overflow-x: clip; }
   .hx-badge { left: 10px; }
   .home .hero h1.fit { white-space: normal; }
 }
+
+/* ===== Thanh menu: dòng trạng thái ở giữa ===== */
+.topbar { display: grid; grid-template-columns: 1fr auto 1fr; }
+.topbar .site-nav { justify-self: end; }
+.topbar .status { margin: 0; display: flex; align-items: center; gap: 8px; color: var(--accent); font: 500 clamp(11px, .9vw, 15px)/1 'JetBrains Mono', ui-monospace, monospace; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.topbar .status .pxi { height: 1.05em; width: auto; fill: currentColor; animation: beat 1.6s ease-in-out infinite; }
+@keyframes beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.25); } 30% { transform: scale(1); } 45% { transform: scale(1.15); } }
+.hx-status { display: none; }
+@media (max-width: 900px) {
+  .topbar { display: flex; }
+  .topbar .status { display: none; }
+  .hx-status { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--accent); font: 500 12px/1.2 'JetBrains Mono', ui-monospace, monospace; text-transform: uppercase; letter-spacing: .06em; }
+  .hx-status .pxi { height: 1.1em; width: auto; fill: currentColor; }
+}
+
+/* ===== Hero: nhãn viên thuốc, ngoặc vuông, mũi tên ===== */
+.hx-pill { border: 1.5px solid currentColor; border-radius: 99px; padding: .55em 1.1em; white-space: nowrap; }
+.hx-arrow { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 1.25em; line-height: 1; }
+.hx-br { margin-left: auto; white-space: nowrap; color: var(--muted); }
+.hx-c { color: var(--accent); white-space: nowrap; }
+.hx-top .hx-dash { flex: 1 1 40px; max-width: 90px; }
+.hx-cap .hx-tri-s { font-size: .9em; }
+
+/* ===== Dòng giới thiệu sinh động ===== */
+.home .hero .hx-desc .tagline { --ink: color-mix(in srgb, var(--text) 22%, #1b1411); color: var(--ink); font-weight: 400; font-size: clamp(20px, 1.95vw, 38px); line-height: 1.32; letter-spacing: -.01em; }
+.tg-name { font-weight: 700; text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: .1em; text-underline-offset: .14em; }
+.tg-hl { color: var(--accent); font-weight: 700; }
+.tg-strong { font-weight: 700; }
+.tg-arrow { color: var(--ink); font-size: .8em; margin-right: .1em; }
+.tg-pill { display: inline-block; width: 2.6em; height: 1.05em; border-radius: 99px; overflow: hidden; vertical-align: -.16em; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 15%, transparent); }
+.tg-pill img, .tg-pill video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tg-grad { background: linear-gradient(110deg, #ff7a3d, #e3411d 40%, #7a3cff 75%, #2fb5ff); }
+.tg-and { display: inline-block; font: italic 400 .9em/1 'Instrument Serif', Georgia, serif; color: var(--accent); border: 1.5px solid var(--accent); border-radius: 99px; padding: .08em .5em .14em; vertical-align: .05em; }
+.tg-ico { display: inline-block; width: .9em; height: .9em; margin-left: .35em; vertical-align: -.1em; fill: none; stroke: var(--accent); stroke-width: 1.8; animation: spin 9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 760px) {
+  .hx-top { flex-wrap: wrap; row-gap: 10px; }
+  .hx-top .hx-br, .hx-top .hx-dash { display: none; }
+  .hx-bottom > span:first-child, .hx-bottom > .hx-dash:not(.long) { display: none; }
+}

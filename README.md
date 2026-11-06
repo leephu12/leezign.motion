@@ -118,3 +118,6 @@ Trong mục có tiêu đề (VD "Hello 👋"), một khối **Quote** sẽ thàn
 - Emoji → biểu tượng pixel: ❤ tim · 🙂 mặt cười · ● pac-man · ✦ ngôi sao · ▶ nút phát · ▬ thanh khối đặc (nhiều ▬ = thanh dài hơn).
 - Các dòng gạch đầu dòng dạng `Nhãn: nội dung` bên dưới thành các chú thích nhỏ có vạch dọc.
 - Các đoạn văn còn lại của mục hiện bằng chữ mono ở cột phải.
+
+## Dòng trạng thái giữa thanh menu
+Thêm 1 dòng cuối trang chủ Notion: `📣 Available for freelance & directing` → hiện giữa thanh menu (kèm tim pixel nhịp đập) trên mọi trang; trên điện thoại hiện ở đầu trang chủ. Xoá dòng này để ẩn.
