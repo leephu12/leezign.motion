@@ -244,3 +244,12 @@ a:hover .roll > span, a:focus-visible .roll > span { transform: translateY(-100%
 .callout-video figure.media { margin: 12px 0; }
 a.img-link { display: block; }
 a.img-link:hover img { opacity: .92; }
+
+/* ===== Khu "Let's work together" (tiêu đề chứa cụm này trong Notion) ===== */
+.cta { margin: clamp(56px, 9vw, 120px) 0 clamp(24px, 4vw, 48px); padding: clamp(36px, 6vw, 80px) 0; border-top: 1px solid var(--line); }
+.content .cta h2, .content .cta h3, .content .cta h4 { font: 800 clamp(44px, 8.5vw, 132px)/.92 var(--font-display); letter-spacing: -.045em; text-transform: uppercase; margin: 0 0 .3em; max-width: none; }
+.cta > p:not(.more) { font-size: clamp(17px, 1.6vw, 21px); max-width: 560px; }
+.cta p.more { display: inline-block; margin: 18px 12px 0 0; }
+.cta .btn[href^="mailto:"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.cta .btn[href^="mailto:"]:hover { background: transparent; color: var(--accent); }
+.cta .btn { padding: 14px 28px; font-size: 16px; }

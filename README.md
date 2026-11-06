@@ -102,3 +102,9 @@ npm run preview
 - **Ảnh có link:** Notion API không đọc được link gắn trực tiếp lên ảnh. Hãy dán link vào **chú thích (caption)** của ảnh:
   - link video (Dropbox/Vimeo/YouTube…) → web hiện video đó, ảnh làm hình chờ;
   - link khác (bài báo, Behance…) → bấm vào ảnh sẽ mở link.
+
+## SEO, nút liên hệ, thống kê lượt xem
+- **Mô tả trang (Google/Facebook):** trang chủ dùng dòng giới thiệu; trang dự án dùng cột **Summary** nếu có, không thì đoạn văn đầu tiên. Ảnh xem trước = ảnh chân dung (trang chủ) / thumbnail dự án.
+- **Sitemap:** `sitemap.xml` và `robots.txt` tự tạo mỗi lần build (theo `SITE_URL`, mặc định là địa chỉ GitHub Pages).
+- **Khu "Let's work together":** trong trang chủ Notion, tiêu đề có cụm *Let's work together* (hoặc *Get in touch*, *Let's talk*) + các dòng bên dưới sẽ thành khu liên hệ lớn; link `mailto:` thành nút đặc.
+- **Đếm lượt xem:** thêm 1 dòng cuối trang chủ Notion: `📊 Analytics: <mã>` — mã GoatCounter (VD `leezign`) hoặc token 32 ký tự của Cloudflare Web Analytics. Dòng này không hiện trên web.

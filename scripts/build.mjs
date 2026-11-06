@@ -84,6 +84,8 @@ const fileUrl = (f) => !f ? '' : f.type === 'external' ? f.external?.url : f.fil
 // ---------- thu thập nội dung ----------
 const pages = new Map(); // id → node
 const slugs = new Set(['index', 'media']);
+let siteOgImage = '';     // ảnh xem trước mặc định (ảnh hero trang chủ)
+let analyticsId = '';     // mã thống kê lượt xem (từ dòng 📊 Analytics trong Notion)
 const siteNav = [];      // các trang trong thanh menu (lấy từ synced block ở trang chủ)
 let siteFooter = '';
 let siteBrand = '';      // chữ cạnh logo (lấy từ link đầu tiên trong thanh menu Notion)     // dòng © lấy từ footer trong Notion
@@ -117,6 +119,11 @@ const HEX_RE = /#(?:[0-9a-f]{3}|[0-9a-f]{6})\b/gi;
 function takeTheme(blocks) {
   let theme = null;
   const out = blocks.filter((b) => {
+    if (b.type === 'paragraph' && /^📊\s*analytics\s*:/i.test(textOf(b))) {
+      // Dòng "📊 Analytics: <mã GoatCounter hoặc token Cloudflare>" → gắn công cụ đếm lượt xem
+      analyticsId = textOf(b).replace(/^📊\s*analytics\s*:\s*/i, '').trim();
+      return false;
+    }
     if (b.type === 'paragraph' && /^🎨\s*theme\s*:/i.test(textOf(b))) {
       const [bg, accent, text] = textOf(b).match(HEX_RE) || [];
       theme = { bg, accent, text };
@@ -495,10 +502,15 @@ const isImageFile = (u) => /\.(png|jpe?g|gif|webp|avif|svg)(\?|$)/i.test(u);
 const videoTag = (src, cls = '') =>
   `<video class="${cls}" src="${esc(src)}" muted loop playsinline autoplay preload="metadata" controls></video>`;
 
+const CTA_RE = /let.?s\s+work\s+together|work\s+with\s+me|get\s+in\s+touch|let.?s\s+talk/i;
 async function renderBlocks(blocks, ctx) {
   let html = '';
+  let inCta = false; // khu "Let's work together": tiêu đề + các dòng bên dưới, tới vạch kẻ / tiêu đề kế tiếp
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i];
+    const isHead = /^heading_/.test(b.type);
+    if (inCta && (isHead || ['divider', 'equation', 'child_database', 'column_list'].includes(b.type))) { html += '</section>'; inCta = false; }
+    if (isHead && CTA_RE.test(plain(b[b.type].rich_text))) { html += '<section class="cta">'; inCta = true; }
     if (b.type === 'bulleted_list_item' || b.type === 'numbered_list_item' || b.type === 'to_do') {
       const type = b.type; const tag = type === 'numbered_list_item' ? 'ol' : 'ul';
       let items = '';
@@ -515,6 +527,7 @@ async function renderBlocks(blocks, ctx) {
     if (/^heading_/.test(b.type) && plain(b[b.type].rich_text).trim()) ctx.heading = plain(b[b.type].rich_text);
     html += await renderBlock(b, ctx);
   }
+  if (inCta) html += '</section>';
   return html;
 }
 
@@ -758,19 +771,39 @@ function propValue(p, ctx) {
   }
 }
 
-function excerpt(blocks) {
-  for (const b of blocks || []) if (b.type === 'paragraph') { const t = plain(b.paragraph.rich_text); if (t) return t.slice(0, 160); }
-  return '';
+// Mô tả trang cho Google / Facebook: cột Summary → đoạn văn đầu tiên đủ dài (bỏ dòng ngắn kiểu "View all …")
+function excerpt(blocks, page) {
+  const sumProp = Object.entries(page?.properties || {}).find(([k, p]) => /^(summary|description|mô tả|tóm tắt)$/i.test(k) && p.type === 'rich_text');
+  let t = sumProp ? plain(sumProp[1].rich_text).trim() : '';
+  if (!t) {
+    const parts = [];
+    for (const b of blocks || []) {
+      if (!['paragraph', 'quote', 'callout'].includes(b.type)) continue;
+      const r = b[b.type].rich_text || [];
+      const x = plain(r).replace(/\s+/g, ' ').trim();
+      if (!x || x.length < 25 || /→\s*$/.test(x) || /^https?:\/\//.test(x) || /^[←→]/.test(x)) continue;
+      parts.push(x);
+      if (parts.join(' ').length >= 140) break;
+    }
+    t = parts.join(' ');
+  }
+  if (t.length > 160) t = t.slice(0, 157).replace(/\s+\S*$/, '') + '…';
+  return t;
 }
+const SITE_URL = (process.env.SITE_URL || (process.env.GITHUB_REPOSITORY
+  ? `https://${process.env.GITHUB_REPOSITORY.split('/')[0].toLowerCase()}.github.io/${process.env.GITHUB_REPOSITORY.split('/')[1]}`
+  : '')).replace(/\/$/, '');
+const sitemap = [];
 
 async function renderPage(n, rootNode) {
   const depth = n.slug === 'index' ? 0 : 2;
   const ctx = { root: depth ? '../../' : '', node: n };
   let blocks = n.blocks;
-  let tagline = '';
+  let tagline = '', taglineText = '';
   const firstIdx = blocks.findIndex((b) => !isBlank(b));
   if (n.slug === 'index' && /^heading_/.test(blocks[firstIdx]?.type || '')) {
     tagline = `<h3 class="tagline">${rt(blocks[firstIdx][blocks[firstIdx].type].rich_text, ctx)}</h3>`;
+    taglineText = plain(blocks[firstIdx][blocks[firstIdx].type].rich_text).trim();
     blocks = blocks.filter((_, i) => i !== firstIdx);
   }
   let heroImg = '';
@@ -783,7 +816,7 @@ async function renderPage(n, rootNode) {
   let content = await renderBlocks(blocks, ctx);
 
   const props = Object.entries(n.page.properties || {})
-    .filter(([k, p]) => p.type !== 'title' && !n.group?.hiddenProps.has(k) && !/colou?r$/i.test(k))
+    .filter(([k, p]) => p.type !== 'title' && !n.group?.hiddenProps.has(k) && !/colou?r$/i.test(k) && !/^(summary|description|mô tả|tóm tắt)$/i.test(k))
     .map(([k, p]) => [k, propValue(p, { ...ctx, key: k })]).filter(([, v]) => v);
   const meta = props.length ? `<dl class="meta">${props.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join('')}</dl>` : '';
 
@@ -812,9 +845,20 @@ async function renderPage(n, rootNode) {
   const navLinks = siteNav.map((id) => pages.get(id)).filter(Boolean)
     .map((p) => `<a href="${linkFor(p.id, ctx)}"${p.id === n.id || n.parent?.id === p.id && !n.pager ? ' aria-current="page"' : ''}>${roll(p.title)}</a>`).join('');
   const isHome = n.slug === 'index';
-  const desc = excerpt(n.blocks) || rootNode.title;
-  const siteUrl = (process.env.SITE_URL || '').replace(/\/$/, '');
-  const ogImg = coverUrl && siteUrl ? `${siteUrl}/${coverUrl.replace('@@ROOT@@', '')}` : '';
+  const desc = (isHome ? taglineText : '') || excerpt(n.blocks, n.page) || `${n.title} — ${rootNode.title}`;
+  const siteUrl = SITE_URL;
+  const pageUrl = siteUrl ? `${siteUrl}/${isHome ? '' : `p/${n.slug}/`}` : '';
+  // Ảnh xem trước khi share: ảnh hero (trang chủ) → thumbnail dự án (ảnh) → ảnh cover → ảnh hero trang chủ
+  let ogSrc = heroImg || '';
+  if (!ogSrc) { const t = thumbSource(n); if (t?.url && t.kind === 'image' && !fbEmoji(t.url)) ogSrc = await media(t.url); }
+  if (!ogSrc && coverUrl) ogSrc = coverUrl;
+  if (!ogSrc) ogSrc = siteOgImage;
+  if (isHome && ogSrc) siteOgImage = ogSrc;
+  const ogImg = ogSrc && siteUrl ? (/^https?:/.test(ogSrc) ? ogSrc : `${siteUrl}/${ogSrc.replace('@@ROOT@@', '')}`) : '';
+  if (pageUrl) sitemap.push(pageUrl);
+  const analytics = !analyticsId ? '' : /^[0-9a-f]{32}$/i.test(analyticsId)
+    ? `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "${esc(analyticsId)}"}'></script>`
+    : `<script data-goatcounter="https://${esc(analyticsId.replace(/^https?:\/\//, '').replace(/\.goatcounter\.com.*$/, ''))}.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>`;
   const favicon = rootIcon
     ? `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>${rootIcon}</text></svg>`
     : '';
@@ -827,9 +871,14 @@ async function renderPage(n, rootNode) {
 ${theme?.bg ? `<meta name="theme-color" content="${theme.bg}">` : ''}
 <title>${esc(isHome ? n.title : `${n.title} — ${rootNode.title}`)}</title>
 <meta name="description" content="${esc(desc)}">
-<meta property="og:title" content="${esc(n.title)}">
+<meta property="og:type" content="${isHome ? 'website' : 'article'}">
+<meta property="og:site_name" content="${esc(siteBrand || rootNode.title)}">
+<meta property="og:title" content="${esc(isHome ? n.title : `${n.title} — ${rootNode.title}`)}">
 <meta property="og:description" content="${esc(desc)}">
-${ogImg ? `<meta property="og:image" content="${esc(ogImg)}">` : ''}
+${pageUrl ? `<meta property="og:url" content="${esc(pageUrl)}">\n<link rel="canonical" href="${esc(pageUrl)}">` : ''}
+${ogImg ? `<meta property="og:image" content="${esc(ogImg)}">\n<meta name="twitter:card" content="summary_large_image">\n<meta name="twitter:image" content="${esc(ogImg)}">` : '<meta name="twitter:card" content="summary">'}
+<meta name="twitter:title" content="${esc(n.title)}">
+<meta name="twitter:description" content="${esc(desc)}">
 ${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" href="${favicon}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -853,6 +902,7 @@ ${pager}
 </main>
 <footer class="foot">${esc(siteFooter || `© ${new Date().getFullYear()} ${rootNode.title}`)}</footer>
 <script src="${ctx.root}main.js?v=${BUILD_V}" defer></script>
+${analytics}
 </body>
 </html>`;
   return html.replaceAll('@@ROOT@@', ctx.root);
@@ -875,7 +925,8 @@ catch (e) {
 assignPagers();
 await fs.rm(OUT, { recursive: true, force: true });
 await fs.mkdir(path.join(OUT, 'media'), { recursive: true });
-for (const n of pages.values()) {
+const ordered = [...pages.values()].sort((a, b) => (b.slug === 'index') - (a.slug === 'index')); // trang chủ trước
+for (const n of ordered) {
   if (!n.title.trim() || /^🗑/.test(n.title)) continue; // trang trống / trang dọn dẹp
   const html = await renderPage(n, root);
   const dir = n.slug === 'index' ? OUT : path.join(OUT, 'p', n.slug);
@@ -886,5 +937,10 @@ for (const name of usedMedia) await fs.copyFile(path.join(CACHE, name), path.joi
 await fs.copyFile(STYLE_SRC, path.join(OUT, 'style.css'));
 await fs.copyFile(SCRIPT_SRC, path.join(OUT, 'main.js'));
 await fs.writeFile(path.join(OUT, '.nojekyll'), '');
+if (SITE_URL) {
+  const today = new Date().toISOString().slice(0, 10);
+  await fs.writeFile(path.join(OUT, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemap.map((u) => `  <url><loc>${esc(u)}</loc><lastmod>${today}</lastmod></url>`).join('\n')}\n</urlset>\n`);
+  await fs.writeFile(path.join(OUT, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+}
 await fs.writeFile(path.join(OUT, '404.html'), (await fs.readFile(path.join(OUT, 'index.html'), 'utf8')));
 console.log(`✔ Xong: ${pages.size} trang, ${usedMedia.size} file media → dist/`);
