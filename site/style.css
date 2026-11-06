@@ -368,3 +368,23 @@ body { overflow-x: clip; }
   .hero-img { width: min(100%, 420px); order: 2; }
   .hero-text { order: 1; }
 }
+
+/* ===== Hàng nút danh mục: to hơn, ghim ngay dưới thanh menu khi cuộn ===== */
+.tag-row {
+  position: sticky; top: var(--topbar-h, 61px); z-index: 9;
+  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: clamp(8px, 1vw, 14px);
+  margin: clamp(20px, 4vh, 48px) 0 8px; padding: 12px 0;
+  background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.tag-row::-webkit-scrollbar { display: none; }
+.tag-row a { flex: none; padding: clamp(12px, 1.1vw, 18px) clamp(20px, 1.8vw, 32px); font-size: clamp(15px, 1.25vw, 22px); font-weight: 600; transition: border-color .25s, color .25s, background .25s, transform .35s cubic-bezier(.22,.8,.2,1); }
+.tag-row a:hover { transform: scale(1.06); background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.tag-row.stuck { box-shadow: 0 1px 0 var(--line); }
+/* trên điện thoại: thanh menu 1 dòng cho gọn */
+@media (max-width: 560px) {
+  .topbar { flex-direction: row; align-items: center; gap: 10px; padding: 10px 14px; }
+  .brand { font-size: 14px; }
+  .site-nav { gap: 12px; }
+  .site-nav a { font-size: 13px; }
+  .tag-row { margin-left: -16px; margin-right: -16px; padding: 10px 16px; }
+}

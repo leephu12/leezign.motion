@@ -501,7 +501,7 @@ const dropboxRaw = (u) => {
 const fbEmoji = (u) => { const m = (u || '').match(/fbcdn\.net\/images\/emoji\.php\/.*\/([0-9a-f_]+)\.png/i); return m ? m[1].split('_').map((h) => String.fromCodePoint(parseInt(h, 16))).join('') : null; };
 const isImageFile = (u) => /\.(png|jpe?g|gif|webp|avif|svg)(\?|$)/i.test(u);
 const videoTag = (src, cls = '') =>
-  `<video class="${cls}" src="${esc(src)}" muted loop playsinline autoplay preload="metadata" controls></video>`;
+  `<video class="${cls}" src="${esc(src)}${/#/.test(src) ? '' : '#t=0.001'}" muted loop playsinline autoplay preload="metadata" controls></video>`;
 
 const CTA_RE = /let.?s\s+work\s+together|work\s+with\s+me|get\s+in\s+touch|let.?s\s+talk/i;
 async function renderBlocks(blocks, ctx) {
@@ -1013,13 +1013,15 @@ function convertGif(name) {
     if (hasFfmpeg === null) hasFfmpeg = await run('ffmpeg', ['-version']).then(() => true, () => false);
     if (!hasFfmpeg) return null;
     const src = path.join(CACHE, name), base = name.replace(/\.gif$/i, '');
-    const mp4 = base + '.mp4', jpg = base + '.jpg';
+    const mp4 = base + '.m.mp4', jpg = base + '.jpg';
     try {
       if (!fss.existsSync(path.join(CACHE, mp4))) {
         const buf = await fs.readFile(src);
         if (gifHasAlpha(buf)) return null;
         await run('ffmpeg', ['-y', '-v', 'error', '-i', src, '-movflags', '+faststart', '-pix_fmt', 'yuv420p',
-          '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-an', path.join(CACHE, mp4)]);
+          // tương thích iPhone/Android: H.264 Main, level 4.0, tối đa 30 khung/giây, khung tối đa 1920px
+          '-vf', "fps=fps='min(30,source_fps)',scale='min(1920,iw)':-2:flags=lanczos,scale=trunc(iw/2)*2:trunc(ih/2)*2",
+          '-c:v', 'libx264', '-profile:v', 'main', '-level', '4.0', '-preset', 'veryfast', '-crf', '20', '-an', path.join(CACHE, mp4)]);
         await run('ffmpeg', ['-y', '-v', 'error', '-i', src, '-frames:v', '1', '-q:v', '3', path.join(CACHE, jpg)]);
         // video lớn hơn GIF thì giữ GIF
         if ((await fs.stat(path.join(CACHE, mp4))).size >= buf.length) { await fs.writeFile(path.join(CACHE, mp4 + '.skip'), ''); }

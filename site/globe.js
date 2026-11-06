@@ -29,14 +29,20 @@
       const g = c.getContext('2d'); g.fillStyle = color; g.beginPath(); g.arc(16, 16, 15, 0, Math.PI * 2); g.fill(); return c;
     };
     const buildText = () => {
-      const w = Math.max(10, Math.round(W * 0.9)), h = Math.max(10, Math.round(H * 0.5));
+      // màn hình dọc (điện thoại): 2 dòng "VIỆT" / "NAM" cho chữ to, đủ nét
+      const portrait = W / H < 1;
+      const lines = portrait ? ['VIỆT', 'NAM'] : ['VIỆT NAM'];
+      const w = Math.max(10, Math.round(W * 0.9)), h = Math.max(10, Math.round(H * (portrait ? 0.62 : 0.5)));
       const c = document.createElement('canvas'); c.width = w; c.height = h;
-      const g = c.getContext('2d'); let fs = h * 0.66;
+      const g = c.getContext('2d'); let fs = h / lines.length * 0.8;
       const setF = () => { g.font = '800 ' + fs + 'px ' + FONT; };
-      setF(); while (g.measureText('VIỆT NAM').width > w * 0.98 && fs > 10) { fs *= 0.95; setF(); }
-      g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#000'; g.fillText('VIỆT NAM', w / 2, h * 0.56);
+      const widest = () => Math.max(...lines.map((l) => g.measureText(l).width));
+      setF(); while (widest() > w * 0.98 && fs > 10) { fs *= 0.95; setF(); }
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#000';
+      lines.forEach((l, i) => g.fillText(l, w / 2, h / 2 + (i - (lines.length - 1) / 2) * fs * 1.02 + fs * 0.06));
       const data = g.getImageData(0, 0, w, h).data;
-      textStep = Math.max(5, Math.round(Math.min(W, H) / 120));
+      // khoảng cách chấm theo độ dày nét chữ: nét luôn có ít nhất ~4 chấm
+      textStep = Math.max(3, Math.round(fs / 22));
       const pts = [];
       for (let y = 0; y < h; y += textStep) for (let x = 0; x < w; x += textStep) if (data[(y * w + x) * 4 + 3] > 128) pts.push([x - w / 2, y - h / 2]);
       for (let i = pts.length - 1; i > 0; i--) { const j = (i * 7919) % (i + 1); [pts[i], pts[j]] = [pts[j], pts[i]]; }
@@ -96,7 +102,7 @@
       // chấm Việt Nam: hiện khi tới Việt Nam, sáng & to dần khi phóng vào, cuối cùng ghép thành chữ
       const vnA = smooth(seg(p, 0.3, 0.44));
       if (vnA > 0.01) {
-        const dVn = clamp(R * 0.0024, 1.4, 9), dText = clamp(textStep * 0.78, 2, 9);
+        const dVn = clamp(R * 0.0024, 1.4, 9), dText = clamp(textStep * 0.86, 2, 9);
         const n = toText > 0 ? Math.max(VN.length, textPts.length) : VN.length;
         for (let i = 0; i < n; i++) {
           const [la, lo] = VN[i % VN.length];

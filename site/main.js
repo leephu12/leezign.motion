@@ -16,6 +16,21 @@
     v.addEventListener('volumechange', () => { if (!v.muted) v.dataset.userPlayed = '1'; });
     io.observe(v);
   });
+  // Điện thoại (VD iPhone bật Tiết kiệm pin) có thể chặn tự chạy → chạm/cuộn lần đầu thì phát các video đang thấy
+  const kickVisible = () => vids.forEach((v) => {
+    const r = v.getBoundingClientRect();
+    if (v.paused && r.bottom > 0 && r.top < innerHeight) v.play().catch(() => {});
+  });
+  ['touchstart', 'click', 'scroll'].forEach((ev) => addEventListener(ev, kickVisible, { passive: true, once: ev !== 'scroll' }));
+  let st = 0; addEventListener('scroll', () => { clearTimeout(st); st = setTimeout(kickVisible, 200); }, { passive: true });
+})();
+
+// Chiều cao thanh menu → để hàng nút danh mục ghim ngay bên dưới
+(() => {
+  const bar = document.querySelector('.topbar');
+  if (!bar) return;
+  const set = () => document.documentElement.style.setProperty('--topbar-h', bar.offsetHeight + 'px');
+  set(); addEventListener('resize', set);
 })();
 
 // Chuyển động theo cuộn: cuộn tới đâu hiện tới đó (trượt lên + rõ dần), chữ sáng dần từng từ. Có làm mượt (lerp) để không giật.
@@ -49,7 +64,7 @@
     if (splitWords(el)) items.push({ el, kind: 'words', words: [...el.querySelectorAll('.w')], cur: -1 });
   });
   // 2) Khối trượt lên + rõ dần theo cuộn (lần lượt từng thẻ trong hàng); ảnh/video/hàng dự án phóng to khi tới giữa màn hình rồi thu lại khi cuộn qua
-  const blockSel = '.content > *:not(.gallery):not(.cta):not(.ab-contact):not(.globe-scene), .gallery > h2, .grid .card, .ab-wide, .ab-row, .cover';
+  const blockSel = '.content > *:not(.gallery):not(.cta):not(.ab-contact):not(.globe-scene):not(.tag-row), .gallery > h2, .grid .card, .ab-wide, .ab-row, .cover';
   const scaleSel = '.cover, .ab-wide, .content > figure.media, .callout-video, .grid .row';
   const find = (el) => items.find((x) => x.el === el);
   document.querySelectorAll(blockSel).forEach((el) => {
