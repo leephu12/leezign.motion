@@ -177,3 +177,16 @@
   addEventListener('mousemove', (e) => { mx = e.clientX; my = e.clientY; if (!raf) raf = requestAnimationFrame(paint); }, { passive: true });
   document.addEventListener('mouseleave', () => { mx = my = -1e4; if (!raf) raf = requestAnimationFrame(paint); });
 })();
+
+// Tiêu đề trang chủ: mỗi dòng tự co giãn cho bằng đúng bề ngang khối chữ (2 dòng đều nhau như 1 khung)
+(() => {
+  const h = document.querySelector('.hero h1.fit');
+  if (!h) return;
+  const fit = () => {
+    const lines = [...h.querySelectorAll('.ln')];
+    const W = h.parentElement.clientWidth;
+    lines.forEach((l) => { l.style.fontSize = ''; const w = l.getBoundingClientRect().width; const fs = parseFloat(getComputedStyle(l).fontSize); if (w > 0) l.style.fontSize = (fs * W / w * 0.995).toFixed(2) + 'px'; });
+  };
+  fit(); addEventListener('resize', fit); addEventListener('load', fit);
+  if (document.fonts) document.fonts.ready.then(fit);
+})();

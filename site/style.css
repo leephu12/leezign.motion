@@ -435,3 +435,42 @@ body { overflow-x: clip; }
   .ab-hero-top { grid-template-columns: 1fr; }
   .statement { font-size: clamp(38px, 12vw, 64px); }
 }
+
+/* ===== About: tiêu đề cùng hàng với mô tả, HELLO to hơn ===== */
+.page-about-me .page-head { display: none; }
+.ab-hero { border-top: 1px solid var(--line); margin-top: clamp(24px, 4vh, 48px); padding-top: clamp(24px, 4vh, 48px); }
+.ab-hero-top { align-items: start; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+.content .ab-title { font: 400 clamp(52px, 7vw, 150px)/.92 var(--font-display); letter-spacing: -.04em; margin: 0 0 clamp(14px, 2vw, 28px); }
+.content .hello { display: flex; align-items: center; gap: 14px; margin: 0; font: 500 clamp(22px, 2.3vw, 42px)/1 'JetBrains Mono', ui-monospace, monospace; text-transform: uppercase; letter-spacing: .02em; }
+.hello .pxi { height: 1em; width: auto; fill: currentColor; }
+.content .mono-bio p { font-size: clamp(14px, 1.15vw, 20px); }
+.mono-bio { padding-top: clamp(8px, 1.4vw, 24px); }
+
+/* ===== Trang chủ: khối chữ hero cân đối + chi tiết đồ hoạ ===== */
+.hero-text { display: flex; flex-direction: column; gap: clamp(16px, 2.6vh, 34px); min-width: 0; }
+.home .hero h1.fit { font-size: clamp(40px, 7vw, 170px); line-height: .86; white-space: nowrap; }
+.home .hero h1.fit .ln { display: block; width: max-content; }
+.hx-row { display: flex; align-items: center; gap: 12px; font: 500 clamp(11px, .85vw, 15px)/1 'JetBrains Mono', ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; color: var(--text); }
+.hx-row .pxi, .hx-desc .pxi, .hero-img .pxi { fill: currentColor; height: 1.3em; width: auto; flex: none; }
+.hx-dash { flex: 0 0 clamp(28px, 4vw, 72px); height: 2px; background: currentColor; }
+.hx-dash.long { flex: 1 1 auto; }
+.hx-sq { width: .8em; height: .8em; background: var(--accent); flex: none; }
+.hx-sq.o { background: none; border: 2px solid var(--accent); }
+.hx-tri-s { width: 0; height: 0; border-left: .5em solid transparent; border-right: .5em solid transparent; border-bottom: .85em solid var(--accent); flex: none; }
+.hx-desc { display: grid; grid-template-columns: auto 1fr; gap: clamp(12px, 1.5vw, 24px); align-items: start; }
+.hx-desc .pxi { height: clamp(26px, 2.6vw, 48px); margin-top: .2em; }
+.home .hero .hx-desc .tagline { margin: 0; max-width: none; font-size: clamp(18px, 1.7vw, 34px); line-height: 1.22; color: var(--text); font-weight: 500; }
+.hx-bottom { color: var(--muted); }
+.hx-bottom .pxi { color: var(--accent); }
+/* chi tiết trên ảnh */
+.hero-img { position: relative; }
+.hx-badge { position: absolute; top: clamp(12px, 1.4vw, 22px); left: clamp(-22px, -1.4vw, -12px); width: clamp(44px, 4vw, 72px); height: clamp(44px, 4vw, 72px); background: var(--accent); color: var(--bg); display: grid; place-items: center; }
+.hx-badge .pxi { height: 46%; fill: var(--bg); }
+.hx-tri { position: absolute; right: clamp(14px, 1.6vw, 26px); bottom: clamp(40px, 4vw, 64px); width: 0; height: 0; border-left: clamp(16px, 1.4vw, 24px) solid transparent; border-bottom: clamp(16px, 1.4vw, 24px) solid var(--bg); }
+.hx-cap { display: flex; align-items: center; gap: 10px; margin-top: 12px; font: 500 clamp(10px, .75vw, 13px)/1 'JetBrains Mono', ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.hx-cap .hx-dash { flex: 1 1 auto; height: 1px; }
+.hero-img img { max-height: calc(100svh - 180px); }
+@media (max-width: 760px) {
+  .hx-badge { left: 10px; }
+  .home .hero h1.fit { white-space: normal; }
+}

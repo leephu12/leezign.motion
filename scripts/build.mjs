@@ -905,10 +905,10 @@ ${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" h
 <main class="wrap">
 ${coverUrl && !heroImg ? `<div class="cover"><img src="${esc(coverUrl)}" alt=""></div>` : ''}
 <div class="page-head${heroImg ? ' hero' : ''}">
-${heroImg ? `<figure class="hero-img"><img src="${esc(heroImg)}" alt="${esc(n.title)}"></figure><div class="hero-text">` : ''}
+${heroImg ? `<figure class="hero-img"><img src="${esc(heroImg)}" alt="${esc(n.title)}"><span class="hx-badge">${pxSvg('heart')}</span><span class="hx-tri" aria-hidden="true"></span><figcaption class="hx-cap"><span>${esc(brandText)}</span><span class="hx-dash"></span><span>© ${new Date().getFullYear()}</span></figcaption></figure><div class="hero-text"><div class="hx-row hx-top">${pxSvg('hand')}<span>Hello</span><span class="hx-dash"></span><span class="hx-sq"></span><span class="hx-sq o"></span><span class="hx-tri-s"></span></div>` : ''}
 ${iconImg && !isHome ? `<img class="page-icon" src="${esc(iconImg)}" alt="">` : icon && !isHome ? `<div class="page-icon">${icon}</div>` : ''}
-<h1>${esc(n.title)}</h1>
-${tagline}
+${heroImg ? `<h1 class="fit">${n.title.split(/\s+\/\s+/).map((l, i, a) => `<span class="ln">${esc(l)}${i < a.length - 1 ? ' /' : ''}</span>`).join('')}</h1>` : `<h1>${esc(n.title)}</h1>`}
+${heroImg && tagline ? `<div class="hx-desc">${pxSvg('arrowdr')}${tagline}</div><div class="hx-row hx-bottom"><span class="hx-sq o"></span><span>Scroll to explore</span><span class="hx-dash long"></span>${pxSvg('heart')}</div>` : tagline}
 ${meta}
 ${heroImg ? '</div>' : ''}
 </div>
@@ -941,6 +941,10 @@ const PX = {
   smile: ['..XXXXX..', '.XXXXXXX.', 'XX.XXX.XX', 'XX.XXX.XX', 'XXXXXXXXX', 'X.XXXXX.X', 'XX.....XX', '.XXXXXXX.', '..XXXXX..'],
   pac: ['..XXXXX..', '.XXXXXXX.', 'XXX.XXXX.', 'XXXXXX...', 'XXXXX....', 'XXXXXX...', 'XXXXXXXX.', '.XXXXXXX.', '..XXXXX..'],
   star: ['...X...', '...X...', '..XXX..', 'XXXXXXX', '..XXX..', '...X...', '...X...'],
+  hand: ['.X.X.X...', '.X.X.X.X.', '.X.X.X.X.', '.XXXXXXX.', 'XXXXXXXX.', 'XXXXXXXX.', '.XXXXXXX.', '.XXXXXX..', '..XXXXX..', '..XXXXX..'],
+  arrow: ['XXXX...', 'XXX....', 'XXXX...', 'X.XXX..', '...XXX.', '....XXX', '.....XX'],
+  arrowdr: ['XX.....', '.XX....', '..XX...', '...XX.X', '....XXX', '...XXXX', '..XXXXX'],
+  tri: ['X.....', 'XX....', 'XXX...', 'XXXX..', 'XXXXX.', 'XXXXXX'],
   play: ['X.....', 'XXX...', 'XXXXX.', 'XXXXXX', 'XXXXX.', 'XXX...', 'X.....'],
 };
 const pxSvg = (name) => {
@@ -949,7 +953,7 @@ const pxSvg = (name) => {
   rows.forEach((r, y) => [...r].forEach((c, x) => { if (c === 'X') d += `M${x} ${y}h1v1h-1z`; }));
   return `<svg class="pxi pxi-${name}" viewBox="0 0 ${w} ${h}" aria-hidden="true" shape-rendering="crispEdges"><path d="${d}"/></svg>`;
 };
-const PX_EMOJI = [[/❤️|❤|♥️|♥|🧡/g, 'heart'], [/🙂|😊|☺️|☺|😀/g, 'smile'], [/●|🟠|👾/g, 'pac'], [/✦|✨|★|⭐/g, 'star'], [/▶️|▶|🎬/g, 'play']];
+const PX_EMOJI = [[/👋/g, 'hand'], [/❤️|❤|♥️|♥|🧡/g, 'heart'], [/🙂|😊|☺️|☺|😀/g, 'smile'], [/●|🟠|👾/g, 'pac'], [/✦|✨|★|⭐/g, 'star'], [/▶️|▶|🎬/g, 'play']];
 function pixelText(rich) {
   return (rich || []).map((x) => {
     if (x.annotations?.code) return `<span class="px">${esc(x.plain_text)}</span>`;
@@ -1007,7 +1011,7 @@ async function renderAbout(blocks, ctx) {
         const t = plain(b[b.type].rich_text); const m = t.match(/^([^:—–]+)[:—–]\s*(.+)$/);
         return `<div class="spec"><span class="spec-k">${esc(m ? m[1].trim() : '')}</span><span class="spec-v">${esc(m ? m[2].trim() : t)}</span></div>`;
       }).join('');
-      html += `<section class="ab-hero"><div class="ab-hero-top"><p class="mono-k">${esc(label)}</p><div class="mono-bio">${await renderBlocks(bio, ctx)}</div></div>`
+      html += `<section class="ab-hero"><div class="ab-hero-top"><div class="ab-hero-l"><h1 class="ab-title">${esc(ctx.node.title)}</h1><p class="hello">${pixelText(sec.head[sec.head.type].rich_text)}<span class="hx-dash"></span><span class="hx-sq"></span></p></div><div class="mono-bio">${await renderBlocks(bio, ctx)}</div></div>`
         + `<p class="statement">${pixelText(quote.quote.rich_text)}</p>${specHtml ? `<div class="specs">${specHtml}</div>` : ''}</section>`;
       for (const w of wide) html += isGlobe(w) ? globeHtml(w) : `<div class="ab-wide">${await renderBlocks([w], ctx)}</div>`;
       continue;
