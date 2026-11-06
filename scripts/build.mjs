@@ -680,11 +680,10 @@ async function renderBlock(b, ctx) {
         // Trang chủ: 1 hàng xem trước. Dự án FEATURED đứng trước, còn chỗ thì lấp bằng các dự án khác cùng danh mục
         const cat = [...pages.values()].find((x) => x !== ctx.node && !x.page.parent?.data_source_id && !x.page.parent?.database_id && x.title.trim().toLowerCase() === ctx.heading.trim().toLowerCase());
         const full = cat ? Object.values(cat.databases || {}).filter(Boolean).flatMap((x) => x.items) : [];
-        const items = [...new Set([...g.items, ...full])].slice(0, 8);
-        let c = ''; for (const n of items) c += await card(n, ctx);
-        return `<section class="gallery preview"><div class="grid one-row">${c}</div></section>`;
+        const items = [...new Set([...g.items, ...full])].slice(0, 4);
+        return `<section class="gallery preview">${await rowsHtml(items, ctx)}</section>`;
       }
-      const grid = async (items) => { let c = ''; for (const n of items) c += await card(n, ctx); return `<div class="grid">${c}</div>`; };
+      const grid = (items) => rowsHtml(items, ctx);
       if (g.groups) {
         let out = '';
         for (const gr of g.groups) out += `<section class="gallery group"><h2 class="group-title">${esc(gr.name)}</h2>${await grid(gr.items)}</section>`;
@@ -697,15 +696,17 @@ async function renderBlock(b, ctx) {
 }
 
 // Ảnh/video đại diện: cover → thuộc tính Files → media đầu tiên trong trang
-function findFirstMedia(blocks) {
+// Ưu tiên ảnh/GIF/video upload trong trang; link video Dropbox chỉ dùng khi trang không có media nào khác
+function findFirstMedia(blocks, allowLinks = false) {
+  if (allowLinks === false) { const r = findFirstMedia(blocks, null); if (r) return r; return findFirstMedia(blocks, true); }
   for (const b of blocks || []) {
     if (b.type === 'image' && fbEmoji(fileUrl(b.image))) continue;
     if (b.type === 'image' || b.type === 'video') return { kind: b.type, url: fileUrl(b[b.type]), external: b[b.type].type === 'external' };
-    if ((b.type === 'link_preview' || b.type === 'bookmark') && isVideoFile(b[b.type].url || ''))
+    if (allowLinks === true && (b.type === 'link_preview' || b.type === 'bookmark') && isVideoFile(b[b.type].url || ''))
       return { kind: 'video', url: b[b.type].url, external: true };
     if (b.type === 'embed' && b.embed.url && (isImageFile(b.embed.url) || isVideoFile(b.embed.url)))
       return { kind: isVideoFile(b.embed.url) ? 'video' : 'image', url: b.embed.url, external: true };
-    const inner = findFirstMedia(b.children); if (inner) return inner;
+    const inner = findFirstMedia(b.children, allowLinks); if (inner) return inner;
   }
   return null;
 }
@@ -738,6 +739,16 @@ function tags(n) {
     if (p.type === 'multi_select') out.push(...p.multi_select.map((s) => s.name));
   }
   return out.slice(0, 4);
+}
+// Lưới dự án: chia hàng 4 thẻ; rê chuột vào thẻ nào thẻ đó nở rộng, đẩy các thẻ cùng hàng
+async function rowsHtml(items, ctx, per = 4) {
+  let out = '';
+  for (let i = 0; i < items.length; i += per) {
+    let c = ''; for (const n of items.slice(i, i + per)) c += await card(n, ctx);
+    const k = Math.min(per, items.length - i);
+    out += k < per ? `<div class="row partial" style="--n:${k}">${c}</div>` : `<div class="row">${c}</div>`;
+  }
+  return `<div class="grid rows">${out}</div>`;
 }
 async function card(n, ctx) {
   const t = tags(n);
