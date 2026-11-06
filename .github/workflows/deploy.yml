@@ -41,6 +41,10 @@ jobs:
           key: notion-media-${{ github.run_id }}
           restore-keys: notion-media-
 
+      # ffmpeg: chuyển GIF → video MP4 cho nhẹ
+      - name: Cài ffmpeg
+        run: which ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+
       - name: Build từ Notion
         run: node scripts/build.mjs
         env:
