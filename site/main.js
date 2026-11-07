@@ -84,7 +84,10 @@
   items.sort((a, b) => (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
 
   const clamp = (v) => Math.max(0, Math.min(1, v));
-  const ease = (t) => 1 - Math.pow(1 - t, 3);
+  // trang About: hiện chậm rãi, nhẹ nhàng hơn (lerp nhỏ, quãng trượt ngắn, đường cong mềm)
+  const gentle = document.body.classList.contains('page-about-me') || !!document.querySelector('.ab-hero');
+  const LERP = gentle ? 0.06 : 0.1;
+  const ease = gentle ? (t) => t * t * (3 - 2 * t) : (t) => 1 - Math.pow(1 - t, 3);
   let raf = 0;
   const frame = () => {
     raf = 0;
@@ -96,14 +99,14 @@
       const r = rects[i];
       let target = 1;
       if (it.kind === 'words') target = clamp((vh * 0.92 - r.top) / (vh * 0.4 + r.height * 0.6));
-      else if (it.kind === 'block') target = clamp((vh * 1.0 - r.top - (it.delay || 0) * vh * 0.06) / (vh * 0.26));
+      else if (it.kind === 'block') target = clamp((vh * 1.0 - r.top - (it.delay || 0) * vh * 0.06) / (vh * (gentle ? 0.42 : 0.3)));
       if (atEnd) target = 1;
       if (it.kind !== 'scale') {
         if (prevChain && prevChain.cur < 0.999 && prevChain.bottom > 0) target = Math.min(target, Math.max(0, prevChain.cur - 0.35) / 0.65);
         prevChain = it; it.bottom = r.bottom;
       }
       if (it.cur < 0) it.cur = it.kind === 'words' || r.bottom < 0 ? target : 0;
-      const next = it.cur + (target - it.cur) * 0.14;
+      const next = it.cur + (target - it.cur) * LERP;
       it.cur = Math.abs(target - next) < 0.002 ? target : next;
       if (it.cur !== target) moving = true;
       let sTarget = 1;
@@ -122,7 +125,7 @@
         return;
       }
       let e = ease(it.cur); if (e > 0.998) e = 1;
-      const y = it.kind === 'block' && e < 1 ? (1 - e) * 70 : 0;
+      const y = it.kind === 'block' && e < 1 ? (1 - e) * (gentle ? 36 : 56) : 0;
       const sc = it.scale && Math.abs(it.s - 1) > 0.0005 ? it.s : 1;
       it.el.style.opacity = e >= 1 ? '' : e.toFixed(3);
       it.el.style.transform = (y || sc !== 1) ? `translate3d(0, ${y.toFixed(1)}px, 0) scale(${sc.toFixed(4)})` : '';
@@ -198,6 +201,29 @@
   if (document.fonts) document.fonts.ready.then(fit);
 })();
 
+// Tiêu đề trang chủ: ký tự ngẫu nhiên đổi liên tục rồi "giải mã" thành chữ thật (lần lượt từng chữ cái)
+(() => {
+  const chs = [...document.querySelectorAll('.home .hero h1.fit .ch')];
+  if (!chs.length || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const G = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#/<>{}*+=%&?';
+  const t0 = performance.now();
+  chs.forEach((c) => { if (c.textContent.trim()) c.dataset.s = G[(Math.random() * G.length) | 0]; });
+  let last = 0;
+  const tick = (now) => {
+    let live = 0;
+    const flip = now - last > 55; if (flip) last = now;
+    chs.forEach((c, i) => {
+      if (!('s' in c.dataset)) return;
+      const end = 200 + i * 26 + 520; // chữ cái đổi ký tự trong lúc nhảy lên, rồi dừng đúng chữ
+      if (now - t0 > end) { delete c.dataset.s; return; }
+      live++;
+      if (flip) c.dataset.s = G[(Math.random() * G.length) | 0];
+    });
+    if (live) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+})();
+
 // Giới thiệu trang chủ: tách chữ để hiện lần lượt từng từ (kèm ô video, chữ "and", biểu tượng)
 (() => {
   const tg = document.querySelector('.home .hero .tagline');
@@ -218,6 +244,19 @@
   };
   wrap(tg);
   document.documentElement.classList.add('tg-ready');
+  // chia theo dòng hiển thị: mỗi dòng hiện sau dòng trước, từ trong dòng hiện lần lượt
+  const lineUp = () => {
+    if (document.documentElement.classList.contains('tg-lined')) return;
+    const ws = [...tg.querySelectorAll('.tw')];
+    let line = -1, top = -1e9, k = 0;
+    ws.forEach((w) => {
+      const t = w.getBoundingClientRect().top + w.offsetHeight / 2;
+      if (t - top > w.offsetHeight * 0.6) { line++; top = t; k = 0; }
+      w.style.setProperty('--l', line); w.style.setProperty('--k', k++);
+    });
+    document.documentElement.classList.add('tg-lined');
+  };
+  (document.fonts ? Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 900))]) : Promise.resolve()).then(() => requestAnimationFrame(lineUp));
 })();
 
 // Đổi giao diện màu: V1 Red · V2 Dark · V3 Neo (nút ở cạnh phải trình duyệt, nhớ lựa chọn)
@@ -239,4 +278,18 @@
     dispatchEvent(new Event('resize')); // vẽ lại quả địa cầu với màu mới
   });
   document.addEventListener('click', (e) => { if (!box.contains(e.target)) box.classList.remove('open'); });
+})();
+
+// Hàng nút danh mục: thêm lớp .stuck khi đang được ghim dưới thanh menu (để hoà trộn overlay)
+(() => {
+  const rows = [...document.querySelectorAll('.tag-row')];
+  if (!rows.length) return;
+  let raf = 0;
+  const check = () => {
+    raf = 0;
+    const top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 61;
+    rows.forEach((r) => r.classList.toggle('stuck', scrollY > 0 && r.getBoundingClientRect().top <= top + 1));
+  };
+  addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(check); }, { passive: true });
+  addEventListener('resize', check); check();
 })();

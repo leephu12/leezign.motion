@@ -914,7 +914,7 @@ ${coverUrl && !heroImg ? `<div class="cover"><img src="${esc(coverUrl)}" alt="">
 <div class="page-head${heroImg ? ' hero' : ''}">
 ${heroImg ? `<figure class="hero-img"><img src="${esc(heroImg)}" alt="${esc(n.title)}"><span class="hx-badge">${pxSvg('heart')}</span><span class="hx-tri" aria-hidden="true"></span><figcaption class="hx-cap"><span class="hx-sq o"></span><span>Portrait</span><span class="hx-dash"></span><span class="hx-tri-s"></span><span>Ho Chi Minh City</span></figcaption></figure><div class="hero-text"><div class="hx-row hx-top"><span class="hx-pill">${esc(brandText)} / Portfolio</span><span class="hx-arrow">→</span><span>Hello</span><span class="hx-br">[ ${new Date().getFullYear()} Edit ]</span></div>${siteStatus ? `<p class="hx-status">${pxSvg('heart')}<span>${esc(siteStatus)}</span></p>` : ''}` : ''}
 ${iconImg && !isHome ? `<img class="page-icon" src="${esc(iconImg)}" alt="">` : icon && !isHome ? `<div class="page-icon">${icon}</div>` : ''}
-${heroImg ? `<h1 class="fit">${n.title.split(/\s+\/\s+/).map((l, i, a) => `<span class="ln"><span class="ln-i" style="--d:${i}">${esc(l)}${i < a.length - 1 ? ' /' : ''}</span></span>`).join('')}</h1>` : `<h1>${esc(n.title)}</h1>`}
+${heroImg ? `<h1 class="fit">${n.title.split(/\s+\/\s+/).map((l, i, a) => `<span class="ln"><span class="ln-i" style="--d:${i}">${splitChars(l + (i < a.length - 1 ? ' /' : ''), a.slice(0, i).join('').length + i * 2)}</span></span>`).join('')}</h1>` : `<h1>${esc(n.title)}</h1>`}
 ${heroImg && tagline ? `<div class="hx-desc">${pxSvg('arrowdr')}${tagline}</div><div class="hx-row hx-bottom"><span>${esc(brandText)}</span><span class="hx-dash"></span><span class="hx-arrow">→</span><span>Scroll to explore</span><span class="hx-dash long"></span><span class="hx-c">© ${new Date().getFullYear()}</span></div>` : tagline}
 ${meta}
 ${heroImg ? '</div>' : ''}
@@ -973,7 +973,14 @@ function pixelText(rich) {
 }
 
 // Dòng giới thiệu trang chủ: "I'm X — a … exploring A, B, C, and D." → tên gạch chân, chèn ô ảnh dự án nhỏ, tô màu từ khoá
-const APERTURE = '<svg class="tg-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M14.3 2.3 8.6 12.2M20.8 7.6H9.4M20.4 16.4l-5.7-9.9M9.7 21.7l5.7-9.9M3.2 16.4h11.4M3.6 7.6l5.7 9.9"/></svg>';
+// tiêu đề hero: tách từng chữ cái (hiệu ứng chữ nhảy & giải mã khi mở trang)
+function splitChars(text, start = 0) {
+  let c = start;
+  return text.split(' ').map((w) => `<span class="wd">${[...w].map((ch) => `<span class="ch" style="--c:${c++}">${esc(ch)}</span>`).join('')}</span>`).join(' ');
+}
+// biểu tượng kể chuyện: cuốn sách mở (nét vẽ dần ra khi trang mở)
+const APERTURE = '<svg class="tg-ico tg-book" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M12 6.6C9.8 5 6.8 4.4 2.8 4.9v13.4c4-.5 7 .1 9.2 1.7 2.2-1.6 5.2-2.2 9.2-1.7V4.9c-4-.5-7 .1-9.2 1.7Z"/><path pathLength="1" d="M12 6.6V20"/><path pathLength="1" d="M5.6 8.8h3.6M5.6 11.8h3.6M14.8 8.8h3.6M14.8 11.8h2.2"/><path class="tg-spark" pathLength="1" d="M19.6 1v3M18.1 2.5h3"/></svg>';
+const PILL_PROJECTS = ['The Circle Main', null]; // dự án lấy video cho từng ô trong dòng giới thiệu
 async function richTagline(text, ctx) {
   const m = text.match(/^(I[’']m)\s+(\S+)\s+([—–-])\s+(.*?\bexploring)\s+(.+?)\.?$/i);
   if (!m) return '';
@@ -987,20 +994,36 @@ async function richTagline(text, ctx) {
     const t = thumbSource(x);
     if (t?.url && t.kind === 'image' && !fbEmoji(t.url)) pills.push(await media(t.url));
   }
+  // ô 1 (brand identities): video tiêu đề dự án "The Circle Main" (GIF đầu trang → tự thành MP4)
+  const fromProject = [];
+  for (const name of PILL_PROJECTS) {
+    let src = '';
+    if (name) {
+      // cùng tên ở nhiều bảng (Work, Articles) → ưu tiên trang có GIF/video
+      const cands = [...pages.values()].filter((x) => x.slug !== 'index' && (x.title || '').trim().toLowerCase() === name.toLowerCase())
+        .map((x) => thumbSource(x)).filter((t) => t?.url && !fbEmoji(t.url))
+        .sort((a, b) => (/\.(gif|mp4|webm|mov)(\?|$)/i.test(decodeURIComponent(b.url.split('?')[0] + '?')) ? 1 : 0) - (/\.(gif|mp4|webm|mov)(\?|$)/i.test(decodeURIComponent(a.url.split('?')[0] + '?')) ? 1 : 0));
+      for (const t of cands) { src = await media(t.url); if (src) break; }
+    }
+    fromProject.push(src);
+  }
   // ô video riêng (site/hero/brand.mp4, character.mp4) nếu có; không thì dùng thumbnail dự án
   const own = ['brand', 'character'].map((k) => (fss.existsSync(path.resolve('site/hero', k + '.mp4')) ? k : null));
-  const pill = (i) => own[i]
+  const pill = (i) => fromProject[i]
+    ? (isVideoFile(fromProject[i]) ? `<span class="tg-pill"><video src="${esc(fromProject[i])}" muted loop playsinline autoplay preload="auto"></video></span>` : `<span class="tg-pill"><img src="${esc(fromProject[i])}" alt=""></span>`)
+    : own[i]
     ? `<span class="tg-pill"><video src="@@ROOT@@hero/${own[i]}.mp4" poster="@@ROOT@@hero/${own[i]}.jpg" muted loop playsinline autoplay preload="auto"></video></span>`
     : pills[i] ? `<span class="tg-pill"><img src="${esc(pills[i])}" alt=""></span>` : '<span class="tg-pill tg-grad"></span>';
   const n = items.length;
   const parts = items.map((it, i) => {
     const t = esc(it);
-    if (i === 0) return `${pill(0)} <span class="tg-hl">${t}</span>`;
-    if (i === n - 1) return `<span class="tg-and">and</span> <strong class="tg-strong">${t}</strong>.${APERTURE}`;
-    if (i === n - 2) return `${pill(1)} ${t}`;
-    return `<span class="tg-arrow">→</span> ${t}`;
+    // dấu phẩy / dấu chấm dính liền với chữ trước (không bị rớt xuống đầu dòng)
+    if (i === 0) return `${pill(0)} <span class="tg-nb"><span class="tg-hl">${t}</span>,</span>`;
+    if (i === n - 1) return `<span class="tg-and">and</span> <span class="tg-nb"><strong class="tg-strong">${t}</strong>.${APERTURE}</span>`;
+    if (i === n - 2) return `${pill(1)} ${t},`;
+    return `<span class="tg-arrow">→</span> ${t},`;
   });
-  return `${esc(m[1])} <span class="tg-name">${esc(m[2])}</span> ${m[3]} ${esc(m[4])} ${parts.slice(0, -1).join(', ')}, ${parts[n - 1]}`;
+  return `${esc(m[1])} <span class="tg-name">${esc(m[2])}</span> ${m[3]} ${esc(m[4])} ${parts.join(' ')}`;
 }
 
 // ---------- Trang About: bố cục 2 cột (nhãn trái / nội dung phải), số liệu, khối liên hệ chữ lớn ----------

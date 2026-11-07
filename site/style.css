@@ -585,3 +585,53 @@ html[data-theme="neo"] .topbar .status, html[data-theme="neo"] .tg-hl { color: v
 .home .hero .hx-desc { margin-bottom: auto; }
 .ab-hero-row { grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr); }
 .ab-portrait img { max-height: 82vh; }
+
+/* ===== v13: hero gọn hơn so với ảnh, tiêu đề không bị cắt dấu "/" ===== */
+@media (min-width: 761px) {
+  .page-head.hero { min-height: 0; padding: clamp(18px, 3vh, 40px) 0 clamp(10px, 2vh, 24px); gap: clamp(28px, 3.4vw, 72px); }
+  .home .hero .hero-img { width: min(30vw, calc((100svh - 250px) * .8)); }
+  .home .hero .hero-img img { max-height: calc(100svh - 250px); }
+  .home .hero .hero-text { justify-content: flex-start; gap: clamp(14px, 2.4vh, 30px); }
+  .home .hero h1.fit { margin-top: auto; }
+  .home .hero .hx-desc { margin-bottom: auto; }
+  .home .hero .hx-desc .tagline { font-size: clamp(20px, 2.25vw, 46px); line-height: 1.28; }
+}
+.home .hero h1.fit .ln { padding: 0 .14em .06em 0; }
+.home .hero h1.fit .wd { display: inline-block; white-space: nowrap; }
+
+/* Tiêu đề: từng chữ cái nhảy lên lần lượt, ký tự ngẫu nhiên "giải mã" thành chữ thật */
+.home .hero h1.fit .ln-i { animation: none !important; }
+.home .hero h1.fit .ch { display: inline-block; position: relative; animation: chIn .95s cubic-bezier(.16,.9,.2,1) both; animation-delay: calc(.2s + var(--c, 0) * 26ms); }
+.home .hero h1.fit .ch[data-s] { -webkit-text-fill-color: transparent; }
+.home .hero h1.fit .ch[data-s]::after { content: attr(data-s); position: absolute; inset: 0; text-align: center; -webkit-text-fill-color: currentColor; opacity: .85; }
+@keyframes chIn { 0% { transform: translateY(105%) rotate(6deg); } 100% { transform: none; } }
+
+/* Dòng giới thiệu: hiện từng dòng (kiểu poster), ô video / chữ "and" / biểu tượng bật ra sau chữ */
+html:not(.tg-lined) .home .hero .tagline .tw { opacity: 0; animation: none; }
+.tg-lined .home .hero .tagline .tw { animation: tgWord .9s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(.75s + var(--l, 0) * .38s + var(--k, 0) * 40ms); }
+.tg-lined .home .hero .tagline .tg-pill.tw { transform-origin: left center; animation: pillIn .9s cubic-bezier(.2,.9,.2,1) both; animation-delay: calc(.95s + var(--l, 0) * .38s + var(--k, 0) * 40ms); }
+.tg-lined .home .hero .tagline .tg-and.tw, .tg-lined .home .hero .tagline .tg-arrow.tw { animation: popIn .7s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(.95s + var(--l, 0) * .38s + var(--k, 0) * 40ms); }
+@keyframes tgWord { from { opacity: 0; transform: translateY(.55em); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes pillIn { 0% { opacity: 0; transform: scaleX(0); } 60% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+/* biểu tượng kể chuyện: cuốn sách tự vẽ nét, tia sáng nhấp nháy */
+.tg-book { animation: none !important; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+.home .hero .tagline .tg-book.tw { opacity: 1; animation: none !important; }
+.tg-book path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.tg-lined .tg-book path { animation: draw 1.1s cubic-bezier(.6,.1,.2,1) both; animation-delay: calc(1.1s + var(--l, 0) * .38s + var(--k, 0) * 40ms); }
+.tg-lined .tg-book path:nth-child(2) { animation-delay: calc(1.5s + var(--l, 0) * .38s + var(--k, 0) * 40ms); }
+.tg-lined .tg-book path:nth-child(3) { animation-delay: calc(1.7s + var(--l, 0) * .38s + var(--k, 0) * 40ms); }
+.tg-lined .tg-book .tg-spark { animation: draw .5s ease-out both, twinkle 2.4s ease-in-out infinite; animation-delay: calc(2.1s + var(--l, 0) * .38s), calc(2.6s + var(--l, 0) * .38s); }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes twinkle { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
+@media (prefers-reduced-motion: reduce) {
+  .home .hero .tagline .tw, .home .hero h1.fit .ch { opacity: 1 !important; animation: none !important; }
+  .tg-book path { stroke-dashoffset: 0; animation: none !important; }
+}
+
+/* Hàng nút danh mục khi được ghim: hoà trộn kiểu overlay với nội dung bên dưới */
+.tag-row { transition: background-color .4s ease, box-shadow .4s ease; }
+.tag-row.stuck { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; mix-blend-mode: overlay; }
+.tag-row.stuck a { border-color: currentColor; }
+.tg-nb { white-space: nowrap; }
+.tag-row.stuck a { background: #111; color: #fff; border-color: transparent; box-shadow: none; }
+.tag-row.stuck a:hover { background: #000; color: #fff; }
