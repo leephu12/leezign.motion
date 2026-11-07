@@ -64,14 +64,15 @@
     if (splitWords(el)) items.push({ el, kind: 'words', words: [...el.querySelectorAll('.w')], cur: -1 });
   });
   // 2) Khối trượt lên + rõ dần theo cuộn (lần lượt từng thẻ trong hàng); ảnh/video/hàng dự án phóng to khi tới giữa màn hình rồi thu lại khi cuộn qua
-  const blockSel = '.content > *:not(.gallery):not(.cta):not(.ab-contact):not(.globe-scene):not(.tag-row), .gallery > h2, .grid .card, .ab-wide, .ab-row, .cover';
+  const blockSel = '.content > *:not(.gallery):not(.cta):not(.ab-contact):not(.globe-scene):not(.tag-row):not(.ab-hero), .ab-hero > *, .ab-hero-row > *, .specs > .spec, .gallery > h2, .grid .card, .ab-wide, .ab-row, .cover';
   const scaleSel = '.cover, .ab-wide, .content > figure.media, .callout-video, .grid .row';
   const find = (el) => items.find((x) => x.el === el);
   document.querySelectorAll(blockSel).forEach((el) => {
     if (find(el)) return;
     if (el.parentElement.closest('.ab-row') && !el.matches('.grid .card')) return;
+    if (el.matches('.ab-hero-row, .specs')) return; // chỉ cho các phần con hiện lần lượt
     const row = el.matches('.grid .card') ? el.parentElement : null;
-    items.push({ el, kind: 'block', cur: 0, delay: row ? [...row.children].indexOf(el) : 0 });
+    items.push({ el, kind: 'block', cur: -1, delay: row ? [...row.children].indexOf(el) : 0 });
   });
   // trang dự án: không phóng to/thu nhỏ để ảnh/video luôn cùng kích thước
   if (!document.body.classList.contains('project')) document.querySelectorAll(scaleSel).forEach((el) => {
@@ -79,6 +80,8 @@
     if (it) it.scale = true; else items.push({ el, kind: 'scale', cur: 1, scale: true });
   });
   items.forEach((it) => { it.s = 0.9; it.el.classList.add('fx'); });
+  // xếp theo thứ tự trên trang → phần sau chỉ bắt đầu hiện khi phần trước đã hiện được một nửa (hiện lần lượt, không đồng loạt)
+  items.sort((a, b) => (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
 
   const clamp = (v) => Math.max(0, Math.min(1, v));
   const ease = (t) => 1 - Math.pow(1 - t, 3);
@@ -88,14 +91,18 @@
     const vh = innerHeight;
     const atEnd = innerHeight + scrollY >= root.scrollHeight - 4;
     const rects = items.map((it) => it.el.getBoundingClientRect()); // đọc trước, ghi sau (tránh giật)
-    let moving = false;
+    let moving = false, prevChain = null;
     items.forEach((it, i) => {
       const r = rects[i];
       let target = 1;
       if (it.kind === 'words') target = clamp((vh * 0.92 - r.top) / (vh * 0.4 + r.height * 0.6));
       else if (it.kind === 'block') target = clamp((vh * 1.0 - r.top - (it.delay || 0) * vh * 0.06) / (vh * 0.26));
       if (atEnd) target = 1;
-      if (it.cur < 0) it.cur = target;
+      if (it.kind !== 'scale') {
+        if (prevChain && prevChain.cur < 0.999 && prevChain.bottom > 0) target = Math.min(target, Math.max(0, prevChain.cur - 0.35) / 0.65);
+        prevChain = it; it.bottom = r.bottom;
+      }
+      if (it.cur < 0) it.cur = it.kind === 'words' || r.bottom < 0 ? target : 0;
       const next = it.cur + (target - it.cur) * 0.14;
       it.cur = Math.abs(target - next) < 0.002 ? target : next;
       if (it.cur !== target) moving = true;
@@ -189,4 +196,47 @@
   };
   fit(); addEventListener('resize', fit); addEventListener('load', fit);
   if (document.fonts) document.fonts.ready.then(fit);
+})();
+
+// Giới thiệu trang chủ: tách chữ để hiện lần lượt từng từ (kèm ô video, chữ "and", biểu tượng)
+(() => {
+  const tg = document.querySelector('.home .hero .tagline');
+  if (!tg) return;
+  let i = 0;
+  const wrap = (node) => {
+    [...node.childNodes].forEach((c) => {
+      if (c.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        c.nodeValue.split(/(\s+)/).forEach((part) => {
+          if (!part) return;
+          if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+          const w = document.createElement('span'); w.className = 'tw'; w.style.setProperty('--i', i++); w.textContent = part; frag.appendChild(w);
+        });
+        c.replaceWith(frag);
+      } else if (c.nodeType === 1) { c.classList.add('tw'); c.style.setProperty('--i', i++); }
+    });
+  };
+  wrap(tg);
+  document.documentElement.classList.add('tg-ready');
+})();
+
+// Đổi giao diện màu: V1 Red · V2 Dark · V3 Neo (nút ở cạnh phải trình duyệt, nhớ lựa chọn)
+(() => {
+  const box = document.querySelector('.theme-switch');
+  if (!box) return;
+  const root = document.documentElement;
+  const cur = () => root.dataset.theme || 'red';
+  const mark = () => box.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === cur()));
+  mark();
+  box.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (matchMedia('(max-width: 760px)').matches && !box.classList.contains('open')) { box.classList.add('open'); return; }
+    const t = b.dataset.t;
+    if (t === 'red') delete root.dataset.theme; else root.dataset.theme = t;
+    try { t === 'red' ? localStorage.removeItem('lz-theme') : localStorage.setItem('lz-theme', t); } catch (err) {}
+    mark(); box.classList.remove('open');
+    dispatchEvent(new Event('resize')); // vẽ lại quả địa cầu với màu mới
+  });
+  document.addEventListener('click', (e) => { if (!box.contains(e.target)) box.classList.remove('open'); });
 })();

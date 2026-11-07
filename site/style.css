@@ -514,3 +514,74 @@ body { overflow-x: clip; }
   .hx-top .hx-br, .hx-top .hx-dash { display: none; }
   .hx-bottom > span:first-child, .hx-bottom > .hx-dash:not(.long) { display: none; }
 }
+
+/* ===== Trang chủ: khối chữ cao bằng ảnh (trên thẳng mép trên ảnh, dưới thẳng mép dưới ảnh) ===== */
+.page-head.hero { align-items: stretch; }
+.home .hero .hero-text { justify-content: space-between; padding: 0; }
+.home .hero .hx-top { margin-top: 0; }
+.home .hero .hero-img { align-self: start; }
+
+/* Hiệu ứng mở trang rõ ràng & mượt: từng phần xuất hiện lần lượt */
+@keyframes hxIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes lnIn { from { transform: translateY(105%); } to { transform: none; } }
+@keyframes dashIn { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes popIn { 0% { opacity: 0; transform: scale(.4); } 70% { transform: scale(1.08); } 100% { opacity: 1; transform: none; } }
+@keyframes imgIn { from { clip-path: inset(100% 0 0 0 round var(--radius)); transform: scale(1.06); } to { clip-path: inset(0 0 0 0 round var(--radius)); transform: none; } }
+.home .hero .hx-top, .home .hero .hx-status { animation: hxIn .8s cubic-bezier(.2,.8,.2,1) .1s both; }
+.home .hero h1.fit, .home .hero h1.fit * { animation: none; }
+.home .hero h1.fit .ln { overflow: hidden; padding-bottom: .04em; }
+.home .hero h1.fit .ln-i { display: inline-block; animation: lnIn 1s cubic-bezier(.16,.9,.2,1) both; animation-delay: calc(.25s + var(--d, 0) * .14s); }
+.home .hero .hx-desc { animation: none; }
+.home .hero .hx-desc > .pxi { animation: popIn .6s cubic-bezier(.2,.8,.2,1) .6s both; }
+.home .hero .tagline { animation: none !important; }
+.tg-ready .home .hero .tagline .tw, .home .hero .tagline .tw { display: inline-block; animation: hxIn .65s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(.7s + var(--i, 0) * 45ms); }
+.home .hero .tagline .tg-pill.tw, .home .hero .tagline .tg-and.tw, .home .hero .tagline .tg-ico.tw { animation-name: popIn; }
+.home .hero .tg-ico.tw { animation: popIn .65s cubic-bezier(.2,.8,.2,1) both, spin 9s linear infinite 2s; animation-delay: calc(.7s + var(--i, 0) * 45ms), 2s; }
+.home .hero .hx-bottom { animation: hxIn .8s cubic-bezier(.2,.8,.2,1) 1.5s both; }
+.home .hero .hx-bottom .hx-dash { transform-origin: left; animation: dashIn 1.2s cubic-bezier(.2,.8,.2,1) 1.7s both; }
+.home .hero .hero-img img { animation: imgIn 1.3s cubic-bezier(.2,.8,.2,1) .15s both; }
+.home .hero .hx-badge { animation: popIn .7s cubic-bezier(.2,.8,.2,1) 1.2s both; }
+.home .hero .hx-cap { animation: hxIn .8s cubic-bezier(.2,.8,.2,1) 1.4s both; }
+
+/* ===== About: tiêu đề → [ảnh chân dung | mô tả] → các chú thích ===== */
+.ab-hero { display: block; }
+.content .ab-title { margin: 0 0 clamp(24px, 4vh, 48px); }
+.ab-hero-row { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(24px, 4vw, 80px); align-items: end; }
+.ab-hero-row.no-img { grid-template-columns: 1fr; }
+.ab-portrait { position: relative; margin: 0; }
+.ab-portrait img { display: block; width: 100%; height: auto; max-height: 86vh; object-fit: cover; border-radius: var(--radius); }
+.ab-portrait .hx-badge { left: clamp(-22px, -1.4vw, -12px); }
+.ab-hero .mono-bio { padding-top: 0; }
+.content .ab-hero .mono-bio p { font-size: clamp(15px, 1.35vw, 24px); line-height: 1.55; max-width: 46ch; }
+.ab-hero .specs { margin-top: clamp(28px, 5vh, 56px); padding-top: clamp(18px, 3vh, 28px); border-top: 1px solid var(--line); }
+.statement-wrap { padding: clamp(48px, 10vh, 140px) 0 clamp(16px, 4vh, 48px); }
+.statement-wrap .statement { margin: 0 !important; }
+@media (max-width: 760px) { .ab-hero-row { grid-template-columns: 1fr; } }
+
+/* ===== Giao diện màu: V2 Dark · V3 Neo ===== */
+body { transition: background-color .5s ease, color .5s ease; }
+html[data-theme="dark"] body { --bg: #0d0c0b !important; --surface: #1a1816 !important; --line: #2e2a27 !important; --text: #ff4b25 !important; --muted: #a39890 !important; --accent: #ff4b25 !important; }
+html[data-theme="dark"] .home .hero .hx-desc .tagline, html[data-theme="dark"] .mono-bio, html[data-theme="dark"] .content p:not(.statement):not(.more) { --ink: #f2ece5; }
+html[data-theme="dark"] .mono-bio p, html[data-theme="dark"] .ab-body p, html[data-theme="dark"] .num-txt { color: #e9e2da; }
+html[data-theme="neo"] body { --bg: #e3e3e6 !important; --surface: #f1f1f3 !important; --line: #c6c6cb !important; --text: #121212 !important; --muted: #5b5b61 !important; --accent: #e3411d !important; }
+html[data-theme="neo"] .home .hero .hx-desc .tagline { --ink: #121212; }
+html[data-theme="neo"] .topbar .status, html[data-theme="neo"] .tg-hl { color: var(--accent); }
+
+/* nút đổi màu: viên thuốc dọc ở cạnh phải trình duyệt */
+.theme-switch { position: fixed; right: clamp(8px, 1.2vw, 18px); top: 50%; transform: translateY(-50%); z-index: 60; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 6px; border-radius: 99px; background: #141312; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+.ts-label { writing-mode: vertical-rl; transform: rotate(180deg); font: 600 9px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .18em; text-transform: uppercase; color: #ff4b25; margin-bottom: 4px; }
+.theme-switch button { width: 42px; height: 42px; border-radius: 50%; border: 1.5px solid transparent; background: transparent; color: #b8b0a8; cursor: pointer; display: grid; place-content: center; gap: 1px; font: 500 8px/1.1 'JetBrains Mono', ui-monospace, monospace; text-transform: uppercase; transition: background .3s, color .3s, border-color .3s, transform .3s; }
+.theme-switch button b { font-weight: 700; font-size: 9px; }
+.theme-switch button i { display: none; }
+.theme-switch button:hover { border-color: #ff4b25; color: #fff; transform: scale(1.06); }
+.theme-switch button.on { background: #ff4b25; color: #fff; border-color: #fff; }
+@media (max-width: 760px) {
+  .theme-switch { right: 6px; top: auto; bottom: 18px; transform: none; padding: 6px 4px; gap: 4px; }
+  .theme-switch button { width: 36px; height: 36px; }
+  .theme-switch:not(.open) button:not(.on), .theme-switch:not(.open) .ts-label { display: none; }
+}
+.home .hero .hero-text { justify-content: flex-start; }
+.home .hero h1.fit { margin-top: auto; }
+.home .hero .hx-desc { margin-bottom: auto; }
+.ab-hero-row { grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr); }
+.ab-portrait img { max-height: 82vh; }

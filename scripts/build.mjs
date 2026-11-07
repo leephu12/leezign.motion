@@ -903,17 +903,18 @@ ${ogImg ? `<meta property="og:image" content="${esc(ogImg)}">\n<meta name="twitt
 ${logo ? `<link rel="icon" href="${esc(logo)}">` : favicon ? `<link rel="icon" href="${favicon}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Pixelify+Sans:wght@500;700&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Be+Vietnam+Pro:wght@400;500;600;800&family=JetBrains+Mono:wght@400;500&family=Pixelify+Sans:wght@500;700&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="${ctx.root}style.css?v=${BUILD_V}">
+<script>try{var t=localStorage.getItem('lz-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
 <body class="${isHome ? 'home' : 'sub'}${n.page.parent?.data_source_id || n.page.parent?.database_id ? ' project' : ''} page-${n.slug}"${bodyStyle ? ` style="${bodyStyle}"` : ''}>
 <header class="topbar"><a class="brand" href="${ctx.root}index.html" aria-label="${esc(brandText)} — Home">${logo ? `<img class="logo" src="${esc(logo)}" alt="">` : rootIcon ? `<span>${rootIcon}</span>` : ''}<span>${esc(brandText)}</span></a>${siteStatus ? `<p class="status">${pxSvg('heart')}<span>${esc(siteStatus)}</span></p>` : ''}<nav class="site-nav">${navLinks}</nav></header>
 <main class="wrap">
 ${coverUrl && !heroImg ? `<div class="cover"><img src="${esc(coverUrl)}" alt=""></div>` : ''}
 <div class="page-head${heroImg ? ' hero' : ''}">
-${heroImg ? `<figure class="hero-img"><img src="${esc(heroImg)}" alt="${esc(n.title)}"><span class="hx-badge">${pxSvg('heart')}</span><span class="hx-tri" aria-hidden="true"></span><figcaption class="hx-cap"><span class="hx-sq o"></span><span>Portrait</span><span class="hx-dash"></span><span class="hx-tri-s"></span><span>Ho Chi Minh City</span></figcaption></figure><div class="hero-text"><div class="hx-row hx-top"><span class="hx-pill">${esc(brandText)} / Portfolio</span><span class="hx-arrow">→</span><span>Hello</span>${pxSvg('hand')}<span class="hx-dash"></span><span class="hx-br">[ ${new Date().getFullYear()} Edit ]</span></div>${siteStatus ? `<p class="hx-status">${pxSvg('heart')}<span>${esc(siteStatus)}</span></p>` : ''}` : ''}
+${heroImg ? `<figure class="hero-img"><img src="${esc(heroImg)}" alt="${esc(n.title)}"><span class="hx-badge">${pxSvg('heart')}</span><span class="hx-tri" aria-hidden="true"></span><figcaption class="hx-cap"><span class="hx-sq o"></span><span>Portrait</span><span class="hx-dash"></span><span class="hx-tri-s"></span><span>Ho Chi Minh City</span></figcaption></figure><div class="hero-text"><div class="hx-row hx-top"><span class="hx-pill">${esc(brandText)} / Portfolio</span><span class="hx-arrow">→</span><span>Hello</span><span class="hx-br">[ ${new Date().getFullYear()} Edit ]</span></div>${siteStatus ? `<p class="hx-status">${pxSvg('heart')}<span>${esc(siteStatus)}</span></p>` : ''}` : ''}
 ${iconImg && !isHome ? `<img class="page-icon" src="${esc(iconImg)}" alt="">` : icon && !isHome ? `<div class="page-icon">${icon}</div>` : ''}
-${heroImg ? `<h1 class="fit">${n.title.split(/\s+\/\s+/).map((l, i, a) => `<span class="ln">${esc(l)}${i < a.length - 1 ? ' /' : ''}</span>`).join('')}</h1>` : `<h1>${esc(n.title)}</h1>`}
+${heroImg ? `<h1 class="fit">${n.title.split(/\s+\/\s+/).map((l, i, a) => `<span class="ln"><span class="ln-i" style="--d:${i}">${esc(l)}${i < a.length - 1 ? ' /' : ''}</span></span>`).join('')}</h1>` : `<h1>${esc(n.title)}</h1>`}
 ${heroImg && tagline ? `<div class="hx-desc">${pxSvg('arrowdr')}${tagline}</div><div class="hx-row hx-bottom"><span>${esc(brandText)}</span><span class="hx-dash"></span><span class="hx-arrow">→</span><span>Scroll to explore</span><span class="hx-dash long"></span><span class="hx-c">© ${new Date().getFullYear()}</span></div>` : tagline}
 ${meta}
 ${heroImg ? '</div>' : ''}
@@ -921,6 +922,7 @@ ${heroImg ? '</div>' : ''}
 <article class="content">${content}</article>
 ${pager}
 </main>
+<div class="theme-switch" role="group" aria-label="Color theme"><span class="ts-label">Theme</span><button type="button" data-t="red" aria-label="V1 Red"><i></i><b>V1</b>Red</button><button type="button" data-t="dark" aria-label="V2 Dark"><i></i><b>V2</b>Dark</button><button type="button" data-t="neo" aria-label="V3 Neo"><i></i><b>V3</b>Neo</button></div>
 <footer class="foot">${esc(siteFooter || `© ${new Date().getFullYear()} ${rootNode.title}`)}</footer>
 <script src="${ctx.root}main.js?v=${BUILD_V}" defer></script>
 ${content.includes('globe-scene') ? `<script src="${ctx.root}globe.js?v=${BUILD_V}" defer></script>` : ''}
@@ -985,7 +987,11 @@ async function richTagline(text, ctx) {
     const t = thumbSource(x);
     if (t?.url && t.kind === 'image' && !fbEmoji(t.url)) pills.push(await media(t.url));
   }
-  const pill = (i) => (pills[i] ? `<span class="tg-pill"><img src="${esc(pills[i])}" alt=""></span>` : '<span class="tg-pill tg-grad"></span>');
+  // ô video riêng (site/hero/brand.mp4, character.mp4) nếu có; không thì dùng thumbnail dự án
+  const own = ['brand', 'character'].map((k) => (fss.existsSync(path.resolve('site/hero', k + '.mp4')) ? k : null));
+  const pill = (i) => own[i]
+    ? `<span class="tg-pill"><video src="@@ROOT@@hero/${own[i]}.mp4" poster="@@ROOT@@hero/${own[i]}.jpg" muted loop playsinline autoplay preload="auto"></video></span>`
+    : pills[i] ? `<span class="tg-pill"><img src="${esc(pills[i])}" alt=""></span>` : '<span class="tg-pill tg-grad"></span>';
   const n = items.length;
   const parts = items.map((it, i) => {
     const t = esc(it);
@@ -1044,9 +1050,22 @@ async function renderAbout(blocks, ctx) {
         const t = plain(b[b.type].rich_text); const m = t.match(/^([^:—–]+)[:—–]\s*(.+)$/);
         return `<div class="spec"><span class="spec-k">${esc(m ? m[1].trim() : '')}</span><span class="spec-v">${esc(m ? m[2].trim() : t)}</span></div>`;
       }).join('');
-      html += `<section class="ab-hero"><div class="ab-hero-top"><div class="ab-hero-l"><h1 class="ab-title">${esc(ctx.node.title)}</h1><p class="hello">${pixelText(sec.head[sec.head.type].rich_text)}<span class="hx-dash"></span><span class="hx-sq"></span></p></div><div class="mono-bio">${await renderBlocks(bio, ctx)}</div></div>`
-        + `<p class="statement">${pixelText(quote.quote.rich_text)}</p>${specHtml ? `<div class="specs">${specHtml}</div>` : ''}</section>`;
-      for (const w of wide) html += isGlobe(w) ? globeHtml(w) : `<div class="ab-wide">${await renderBlocks([w], ctx)}</div>`;
+      // Hàng 1: tiêu đề "About me" · Hàng 2: ảnh chân dung (ảnh đầu tiên trong mục) | mô tả · Hàng 3: các chú thích
+      // Câu tuyên ngôn được dời xuống ngay trên cảnh quả địa cầu
+      const imgs = wide.filter((w) => w.type === 'image');
+      const portrait = imgs[0] ? await media(fileUrl(imgs[0].image)) : '';
+      const statement = `<p class="statement">${pixelText(quote.quote.rich_text)}</p>`;
+      html += `<section class="ab-hero"><h1 class="ab-title">${esc(ctx.node.title)}</h1>`
+        + `<div class="ab-hero-row${portrait ? '' : ' no-img'}">${portrait ? `<figure class="ab-portrait"><img src="${esc(portrait)}" alt="${esc(ctx.node.title)}"><span class="hx-badge">${pxSvg('heart')}</span></figure>` : ''}`
+        + `<div class="mono-bio">${await renderBlocks(bio, ctx)}</div></div>`
+        + `${specHtml ? `<div class="specs">${specHtml}</div>` : ''}</section>`;
+      let placed = false;
+      for (const w of wide) {
+        if (imgs.includes(w)) continue; // ảnh trong mục mở đầu: ảnh đầu làm chân dung, các ảnh khác không hiện
+        if (isGlobe(w)) { html += `<div class="statement-wrap">${statement}</div>` + globeHtml(w); placed = true; }
+        else html += `<div class="ab-wide">${await renderBlocks([w], ctx)}</div>`;
+      }
+      if (!placed) html += `<div class="statement-wrap">${statement}</div>`;
       continue;
     }
     let inner = '';
@@ -1158,6 +1177,7 @@ for (const name of usedMedia) await fs.copyFile(path.join(CACHE, name), path.joi
 await fs.copyFile(STYLE_SRC, path.join(OUT, 'style.css'));
 await fs.copyFile(SCRIPT_SRC, path.join(OUT, 'main.js'));
 await fs.copyFile(path.resolve('site/globe.js'), path.join(OUT, 'globe.js'));
+if (fss.existsSync('site/hero')) { await fs.mkdir(path.join(OUT, 'hero'), { recursive: true }); for (const f of await fs.readdir('site/hero')) await fs.copyFile(path.join('site/hero', f), path.join(OUT, 'hero', f)); }
 await fs.writeFile(path.join(OUT, '.nojekyll'), '');
 if (SITE_URL) {
   const today = new Date().toISOString().slice(0, 10);

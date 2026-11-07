@@ -18,12 +18,14 @@
   const easeOut = (t) => 1 - Math.pow(1 - t, 3);
   const seg = (p, a, b) => clamp((p - a) / (b - a));
   const mix = (a, b, t) => a + (b - a) * t;
-  const FONT = '"Bricolage Grotesque", system-ui, sans-serif';
+  const FONT = '"Be Vietnam Pro", "Bricolage Grotesque", system-ui, sans-serif'; // có đủ dấu tiếng Việt (Ệ, ạ…)
 
   scenes.forEach((scene) => {
     const canvas = scene.querySelector('canvas'), ctx = canvas.getContext('2d');
     const cap = scene.querySelector('.globe-caption');
     let W = 0, H = 0, DPR = 1, color = '#E3411D', dot = null, textPts = [], textStep = 8, pSm = -1;
+    // ngôi sao: chấm nhỏ nhấp nháy quanh trái đất, mờ dần khi cuộn
+    const STARS = Array.from({ length: 260 }, () => ({ x: Math.random(), y: Math.random(), r: 0.6 + Math.random() * 1.6, ph: Math.random() * Math.PI * 2, sp: 0.6 + Math.random() * 2.2 }));
     const makeDot = () => {
       const c = document.createElement('canvas'); c.width = c.height = 32;
       const g = c.getContext('2d'); g.fillStyle = color; g.beginPath(); g.arc(16, 16, 15, 0, Math.PI * 2); g.fill(); return c;
@@ -44,7 +46,12 @@
       // khoảng cách chấm theo độ dày nét chữ: nét luôn có ít nhất ~4 chấm
       textStep = Math.max(3, Math.round(fs / 22));
       const pts = [];
-      for (let y = 0; y < h; y += textStep) for (let x = 0; x < w; x += textStep) if (data[(y * w + x) * 4 + 3] > 128) pts.push([x - w / 2, y - h / 2]);
+      const filled = (x0, y0) => {
+        let n = 0;
+        for (let y = y0; y < Math.min(h, y0 + textStep); y++) for (let x = x0; x < Math.min(w, x0 + textStep); x++) if (data[(y * w + x) * 4 + 3] > 140) n++;
+        return n >= textStep * textStep * 0.28; // ô có đủ nét chữ (kể cả dấu nhỏ) thì đặt chấm
+      };
+      for (let y = 0; y < h; y += textStep) for (let x = 0; x < w; x += textStep) if (filled(x, y)) pts.push([x + textStep / 2 - w / 2, y + textStep / 2 - h / 2]);
       for (let i = pts.length - 1; i > 0; i--) { const j = (i * 7919) % (i + 1); [pts[i], pts[j]] = [pts[j], pts[i]]; }
       textPts = pts;
     };
@@ -74,9 +81,19 @@
       const pRaw = clamp(-r.top / Math.max(1, r.height - vh));
       const prev = pSm;
       pSm = pSm < 0 ? pRaw : pSm + (pRaw - pSm) * 0.085;
-      if (Math.abs(pSm - prev) < 0.00002 && prev >= 0) return; // đứng yên thì không vẽ lại
+      const starA = 1 - smooth(seg(pSm, 0.12, 0.42));
+      if (Math.abs(pSm - prev) < 0.00002 && prev >= 0 && starA <= 0.01) return; // đứng yên & hết sao thì không vẽ lại
       const p = pSm;
       ctx.clearRect(0, 0, W, H);
+      if (starA > 0.01) {
+        const now = performance.now() / 1000, cxs = W / 2, cys = H / 2, R0s = Math.min(W, H) * 0.4;
+        for (const st of STARS) {
+          const x = st.x * W, y = st.y * H;
+          if (Math.hypot(x - cxs, y - cys) < R0s) continue; // chỉ ở quanh quả cầu
+          const tw = 0.25 + 0.75 * Math.pow(0.5 + 0.5 * Math.sin(now * st.sp + st.ph), 3);
+          put(x, y, st.r * 2, tw * starA * 0.85);
+        }
+      }
       const cx = W / 2, cy = H / 2, m = Math.min(W, H);
 
       // 1) xoay 2–3 vòng (trái → phải), chậm dần và dừng đúng Việt Nam
