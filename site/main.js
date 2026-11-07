@@ -201,6 +201,25 @@
   if (document.fonts) document.fonts.ready.then(fit);
 })();
 
+// Tiêu đề trang chủ: di chuột → chữ gần con trỏ mảnh lại như sóng (giống chữ liên hệ trang About)
+(() => {
+  const chars = [...document.querySelectorAll('.home .hero h1.fit .ch')];
+  if (!chars.length || !matchMedia('(hover: hover)').matches) return;
+  const h = chars[0].closest('h1');
+  const MIN = 300, MAX = 800, R = 160;
+  let raf = 0, mx = -1e4, my = -1e4;
+  const paint = () => {
+    raf = 0;
+    for (const c of chars) {
+      const r = c.getBoundingClientRect();
+      const d = Math.hypot(r.left + r.width / 2 - mx, r.top + r.height / 2 - my);
+      c.style.fontVariationSettings = `'wght' ${Math.round(MAX - (MAX - MIN) * Math.max(0, 1 - d / R))}`;
+    }
+  };
+  h.addEventListener('mousemove', (e) => { mx = e.clientX; my = e.clientY; if (!raf) raf = requestAnimationFrame(paint); });
+  h.addEventListener('mouseleave', () => { mx = my = -1e4; if (!raf) raf = requestAnimationFrame(paint); });
+})();
+
 // Tiêu đề trang chủ: ký tự ngẫu nhiên đổi liên tục rồi "giải mã" thành chữ thật (lần lượt từng chữ cái)
 (() => {
   const chs = [...document.querySelectorAll('.home .hero h1.fit .ch')];
